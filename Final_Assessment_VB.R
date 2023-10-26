@@ -855,8 +855,15 @@ train_set1 <- dataset1[tt_index1, ]
 set_set1 <- dataset1[-tt_index1, ]
 
 #We link the train set of 0 and 1 into 1, same for the test
+train_set0
+train_set1
 train_set =rbind(train_set0,train_set1)
+train_set
+
+?levels
+unique(train_set$y)
 test_set  =rbind(test_set0,set_set1)
+test_set
 
 nrow(train_set)+nrow(test_set)-nrow(dataset)
 
@@ -893,26 +900,157 @@ nrow(train_set)+nrow(test_set)-nrow(dataset)
 
 head(train_set)
 na
-train_glm <- train(y ~ job+marital+education+housing+month+loan+poutcome+age+previous, method="glm", data = train_set)
+
+#only with variable job
+train_glm <- train(y ~ job, method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
 
-train_glm <- train(y ~ job+marital+education+housing+month+loan+poutcome+age+previous+day, method="glm", data = train_set)
+#only with variable job+marital
+train_glm <- train(y ~ job+marital, method="glm", data = train_set)
+glm_pred <- predict(train_glm, train_set)
+mean(glm_pred==train_set$y)
+#no change in accuracy
+
+#only with variable job+marital+education
+train_glm <- train(y ~ job+marital+education, method="glm", data = train_set)
+glm_pred <- predict(train_glm, train_set)
+mean(glm_pred==train_set$y)
+#no change in accuracy
+
+#only with variable job+marital+education+housing
+train_glm <- train(y ~ job+marital+education+housing, method="glm", data = train_set)
+glm_pred <- predict(train_glm, train_set)
+mean(glm_pred==train_set$y)
+#no change in accuracy
+
+#only with variable job+marital+education+housing+month
+train_glm <- train(y ~ job+marital+education+housing+month, method="glm", data = train_set)
+glm_pred <- predict(train_glm, train_set)
+mean(glm_pred==train_set$y)
+#improvement in accuracy
+
+#only with variable job+marital+education+housing+month+loan
+train_glm <- train(y ~ job+marital+education+housing+month+loan, method="glm", data = train_set)
+glm_pred <- predict(train_glm, train_set)
+mean(glm_pred==train_set$y)
+#stable accuracy
+
+#only with variable job+marital+education+housing+month+loan+poutcome
+train_glm <- train(y ~ job+marital+education+housing+month+loan+poutcome, method="glm", data = train_set)
+glm_pred <- predict(train_glm, train_set)
+mean(glm_pred==train_set$y)
+#deterioration of accuracy, we remove outcome
+
+#only with variable job+marital+education+housing+month+loan+age
+train_glm <- train(y ~ job+marital+education+housing+month+loan+age, method="glm", data = train_set)
+glm_pred <- predict(train_glm, train_set)
+mean(glm_pred==train_set$y)
+#stable accuracy
+
+#only with variable job+marital+education+housing+month+loan+age+previous
+train_glm <- train(y ~ job+marital+education+housing+month+loan+age+previous, method="glm", data = train_set)
+glm_pred <- predict(train_glm, train_set)
+mean(glm_pred==train_set$y)
+#previous is deteriorating the regression
+
+#only with variable job+marital+education+housing+month+loan+age+campaign
+train_glm <- train(y ~ job+marital+education+housing+month+loan+age+campaign, method="glm", data = train_set)
+glm_pred <- predict(train_glm, train_set)
+mean(glm_pred==train_set$y)
+#campaign is deteriorating the regression
+
+#only with variable job+marital+education+housing+month+loan+age+day
+train_glm <- train(y ~ job+marital+education+housing+month+loan+age+campaign+day, method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
 #day is deteriorating the regression
 
-train_glm <- train(y ~ job+marital+education+housing+month+loan+poutcome+age+previous+campaign, method="glm", data = train_set)
+#What about if I use all variables 
+train_glm <- train(y ~ ., method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
-#CAMPAIGN is deteriorating the regression
+#deterioration of the prediction
+
+#We will keep only the variable job+marital+education+housing+month+loan+age
+train_glm <- train(y ~ job+marital+education+housing+month+loan+age, method="glm", data = train_set)
+glm_pred <- predict(train_glm, train_set)
+mean(glm_pred==train_set$y)
 
 
-train_knn <- train(y ~job+marital+education+housing+month+loan+poutcome+age+previous, method="knn", data = train_set)
+#Perform knn method
+train_knn <- train(y ~ job+marital+education+housing+month+loan+age, method="knn", data = train_set)
 knn_pred <- predict(train_knn, train_set)
+knn_pred
 mean(knn_pred==train_set$y)
+
+#Perform knn method with best fit for k
+train_knn2 <- train(y ~ job+marital+education+housing+month+loan+age, method="knn", data = train_set, tuneGrid = data.frame(k=seq(1,50,2)))
+train_knn2
+ggplot(train_knn2)
+
+knn_pred <- predict(train_knn, train_set)
+knn_pred
+mean(knn_pred==train_set$y)
+#best accuracy when k=1 DOES IT MAKE SENSE?
+#Perform knn method with cross validation 
+train_knn2_cv <- train(y ~ job+marital+education+housing+month+loan+age, method="knn", data = train_set, tuneGrid = data.frame(k=seq(1,50,2)), trControl = trainControl(method="cv", number = 10, p =0.9))
+train_knn2_cv$bestTune
+##The value of 49 does not seem to match the best value from the grph of 2.
+ggplot(train_knn2_cv)
+
+
+ggplot(train_knn2)
+
+knn_pred <- predict(train_knn, train_set)
+knn_pred
+mean(knn_pred==train_set$y)
+
+
+#I FACE LEVEL ISSUES AND DO NOT MANAGE TO PRODUCE A CONFUSION MATRIX
+#levels(knn_pred$y)
+#levels(train_set$y)
+#knn_pred$y <- factor(knn_pred$y, levels = levels(train_set$y))
+#train_set$y <- factor(knn_pred$y, levels = levels(train_set$y))
+#unique(train_set$y)
+#confusionMatrix(knn_pred, train_set$y)$overall[["Accuracy"]]
+
+##prediction is not as good as prediction for the glm
+#rf
+train_rf <- train(y ~ job+marital+education+housing+month+loan+age, method="rf", data = train_set)
+rf_pred <- predict(train_rf, train_set)
+mean(rf_pred==train_set$y)
 
 train_rf <- train(y ~job+marital+education+housing+month+loan+poutcome+age+previous, method="rf", data = train_set)
 rf_pred <- predict(train_rf, train_set)
 mean(rf_pred==train_set$y)
+#not as good as glm
+confusionMatrix(rf_pred, train_set$y)$overall[["Accuracy"]]
 
+#Let's try rf with all values
+train_rf <- train(y ~., method="rf", data = train_set)
+rf_pred <- predict(train_rf, train_set)
+mean(rf_pred==train_set$y)
+
+# use cross validation to choose parameter
+mtry= seq(1,7)
+train_rpart_rf <- train(y ~ .,
+                    method = "rf",
+                    ntree=100,
+                    tuneGrid = data.frame(mtry= seq(1,7)),
+                    data = train_set)
+train_rpart_rf
+train_rpart_rf$bestTune
+#not too sure how to interpret the data
+#confusionMatrix(predict(train_rf_2, mnist_27$test), mnist_27$test$y)$overall["Accuracy"]
+
+# IS IT POSSIBLE TO CREATE A LOOP WHICH ASSESSES VARIABLES?
+#train_set
+#pvals <- rep(0, ncol(train_set))
+#pvals
+#for (i in 1:ncol(train_set)) {
+#  pvals[i] <- t.test(train_set[,i][y==0], train_set[,i][y==1], var.equal=TRUE)$p.value
+#}
+
+
+##TO DO: knn using cross validation and 
