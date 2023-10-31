@@ -57,759 +57,214 @@ for (j in 1:ncol(bank_score)) {
   cat(names(bank_score)[j], "\t", length(unique(bank_score[,j])),"\n")
 }
 
+###############CHECK NEW METHOD
+######################################
+########## categorical variables : barplot ####
+######################################
 
-#bank_score%>% lm(y ~ age, data = .)
+#colors <- c("No" = "lightyellow", "Yes" = "lightblue")
+#par(mfrow=c(1,2))
 
-#Linear regression, loess, knn
-bank_score$y
+twograph <- function(namevar,labelvar,xfactors=NULL) {
+  data_score=bank_score[,c(namevar,"y")]
+  names(data_score) <- c("x","y")
+#factor important for order of graphs  
+  if (!is.null(xfactors)) {
+    data_score$x =
+      factor(data_score$x,levels=xfactors)
+  }
+  Graph1 <- data_score %>%
+    group_by(x) %>%
+    summarize(avg = mean(y == "yes")) %>%
+    ggplot(aes(x = x, y = avg)) +
+    geom_bar(stat = "identity", fill = "blue") +
+    labs(
+      title = paste("Frequency of y=yes by ",
+                    labelvar,sep = ""),
+      #x = libvar,
+      x = " ",
+      y = "Percent (%)"
+      #y = "Average 'Yes' Responses"
+    ) +
+    #theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+    theme(axis.text.x = element_text(angle = 90))+
+    theme(axis.text.x = element_text(size = rel(0.8)))
+ 
+  m = table(data_score$x, data_score$y)
+  n = round(100*prop.table(m,2),2)
+  
+  no <- n[,1]
+  yes <- n[,2]
+  md <- row.names(n)
+  
+  df1 <- data.frame(no, yes, md)
+  df2 <- melt(df1, id.vars='md')
+  #print(df2)
+  
+  if (!is.null(xfactors)) {
+    df2$md = factor(df2$md,levels=xfactors)
+  }
+  
+  Graph2 <-ggplot(df2, aes(x=md, y=value, fill=variable)) +
+    ggtitle(paste("Frequency of y by ", labelvar,sep = ""))+
+    geom_bar(stat='identity', position='dodge') +
+    #labs(y= "Percent of y", x = "Job type")+
+    labs(y= "Percent (%)", x = " ")+
+    labs(fill = " ") +
+    scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
+    theme(axis.text.x = element_text(angle = 90))+
+    theme(axis.text.x = element_text(size = rel(0.8)))
 
-# categorical
-# check job type
-Graph1 <- bank_score %>%
-  group_by(job) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = job, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by Job Type",
-    x = "Job",
-    y = "Average 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-# check of distribution of yes/no by job type
+    plot(Graph1)
+    plot(Graph2)
+    cat("variable=",labelvar,"\n")
+    print(t(n))
+    grid.arrange(Graph1, Graph2, ncol = 2)
+    
+  # get in a list all the variables of the function
+  return (list(graph1=Graph1,graph2=Graph2,
+               m=m,n=n,yes=yes,no=no,md=md,
+               df1=df1,df2=df2,namevar=namevar,
+               labelvar=labelvar))
+  
+}
 
-unique(bank_score$job)
-m = table(bank_score$job, bank_score$y)
-m
-n = round(100*prop.table(m,2),2)
-n
-t(n) # column percentages
-
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-job <- row.names(n)
-job
-
-df1 <- data.frame(no, yes, job)
-df2 <- melt(df1, id.vars='job')
-head(df2)
-
-# Define custom colors for 'No' and 'Yes'
-colors <- c("No" = "lightyellow", "Yes" = "lightblue")
-
-Graph2 <-ggplot(df2, aes(x=job, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y distribution (in percent)", x = "Job type")+
-  labs(fill = "titre legend") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90))
-Graph2
-
-grid.arrange(Graph1, Graph2, ncol = 2)
-## blue colar significant more no and management, retired more yes, VARIABLE JOB KEPT
+# check job
+g1g2 = twograph("job","Job")
+#Visual difference between yes and no: variable to keep
 
 # check marital
-Graph1 <- bank_score %>%
-  group_by(marital) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = marital, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by marital Type",
-    x = "marital",
-    y = "Average 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-# We see much lower rate for married
-
-# check of distribution of yes/no by marriage
-unique(bank_score$marital)
-
-m = table(bank_score$marital, bank_score$y)
-m
-n = round(100*prop.table(m,2),2)
-n
-t(n) # column percentages
-
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-marital <- row.names(n)
-marital
-
-df1 <- data.frame(no, yes, marital)
-df2 <- melt(df1, id.vars='marital')
-head(df2)
-
-Graph2 <- ggplot(df2, aes(x=marital, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y distribution (in percent)", x = "x axis name")+
-  labs(fill = "titre legend") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90))
-grid.arrange(Graph1, Graph2, ncol = 2)
-# More no for married, this can be kept VARIABLE MARITAL KEPT
-
-# check education 
-Graph1 <- bank_score %>%
-  group_by(education) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = education, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by education Type",
-    x = "education",
-    y = "Average 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-Graph1
-
-# check of distribution of yes/no by education
-unique(bank_score$education)
-
-m = table(bank_score$education, bank_score$y)
-m
-n = round(100*prop.table(m,2),2)
-n
-t(n) # column percentages
-
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-education <- row.names(n)
-education
-
-df1 <- data.frame(no, yes, education)
-df2 <- melt(df1, id.vars='education')
-head(df2)
-
-Graph2 <-  ggplot(df2, aes(x=education, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y distribution (in percent)", x = "education")+
-  labs(fill = "titre legend") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90))
-grid.arrange(Graph1, Graph2, ncol = 2)
-
-# tertiary seems confirmed as an indicator of yes, VARIABLE EDUCATION KEPT
-
-# check default   
-Graph1 <- bank_score %>%
-  group_by(default) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = default, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by default  Type",
-    x = "default",
-    y = "Average 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-Graph1
-
-# check of distribution of yes/no by default
-unique(bank_score$default)
-
-m = table(bank_score$default, bank_score$y)
-m
-n = round(100*prop.table(m,2),2)
-n
-t(n) # column percentages
-
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-default <- row.names(n)
-default
-
-df1 <- data.frame(no, yes, default)
-df2 <- melt(df1, id.vars='default')
-head(df2)
-
-Graph2 <-  ggplot(df2, aes(x=default, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y repartition (in percent)", x = "Default")+
-  labs(fill = "titre legend") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90))  
-Graph2
-
-grid.arrange(Graph1, Graph2, ncol = 2)
-
-# check housing 
-Graph1 <-bank_score %>%
-  group_by(housing) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = housing, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by housing Type",
-    x = "housing",
-    y = "Average 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-Graph1
-
-# check of distribution of yes/no by housing type
-m = table(bank_score$housing, bank_score$y)
-n = round(100*prop.table(m,2),2)
-t(n) # column percentages
-n
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-housing <- row.names(n)
-housing
-
-df1 <- data.frame(no, yes, housing)
-df2 <- melt(df1, id.vars='housing')
-head(df2)
-
-Graph2 <- ggplot(df2, aes(x=housing, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y axis name (in percent)", x = "Housing")+
-  labs(fill = "titre legend") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90)) 
-Graph2
-grid.arrange(Graph1, Graph2, ncol = 2)
-# No housing is confirmed to be a good indicator of yes VARIABLE HOUSING KEPT
-
-# check loan 
-Graph1<- bank_score %>%
-  group_by(loan) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = loan, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by loan Type",
-    x = "loan",
-    y = "Average 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-# check of distribution of yes/no by loan type
-m = table(bank_score$loan, bank_score$y)
-n = round(100*prop.table(m,2),2)
-t(n) # column percentages
-n
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-loan <- row.names(n)
-loan
-
-df1 <- data.frame(no, yes, loan)
-df2 <- melt(df1, id.vars='loan')
-head(df2)
-
-Graph2 <- ggplot(df2, aes(x=loan, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y distribution (in percent)", x = "loan")+
-  labs(fill = "titre legend")+
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90)) 
-grid.arrange(Graph1, Graph2, ncol = 2)
-
-# While we see most of loans are in no, there is still a difference between yes and no repartition so variable LOAN IS KEPT
-
-
-# check contact 
-Graph1 <- bank_score %>%
-  group_by(contact) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = contact, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by contact Type",
-    x = "contact",
-    y = "Average 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-Graph1
-
-# check of distribution of yes/no by loan type
-m = table(bank_score$contact, bank_score$y)
-n = round(100*prop.table(m,2),2)
-t(n) # column percentages
-n
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-contact <- row.names(n)
-contact
-
-df1 <- data.frame(no, yes, contact)
-df2 <- melt(df1, id.vars='contact')
-head(df2)
-
-Graph2 <- ggplot(df2, aes(x=contact, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y distribution (in percent)", x = "contact")+
-  labs(fill = "titre legend")+
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90)) 
-Graph2
-grid.arrange(Graph1, Graph2, ncol = 2)
-# Cellular associated to yes, variable CONTACT KEPT
-
-#check month 
-#Check share of yes/no per month
-Graph1 <- bank_score %>%
-  group_by(month) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = month, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by month Type",
-    x = "month",
-    y = "month 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-Graph1
-
-# Analysis of distribution of yes and no across the months
-m = table(bank_score$month, bank_score$y)
-n = round(100*prop.table(m,2),2)
-t(n) # column percentages
-n
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-month <- row.names(n)
-month
-
-df1 <- data.frame(no, yes, month)
-df2 <- melt(df1, id.vars='month')
-head(df2)
-
-Graph2 <- ggplot(df2, aes(x=month, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y axis name (in percent)", x = "x axis name")+
-  labs(fill = "titre legend") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90)) 
-grid.arrange(Graph1, Graph2, ncol = 2)
-# Strong difference between months VARIABLE MONTH KEPT
-
-# check poutcome 
-Graph1 <- bank_score %>%
-  group_by(poutcome) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = poutcome, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by poutcome Type",
-    x = "poutcome",
-    y = "poutcome 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-Graph1
-
-# Analysis of distribution of yes and no across poutcome
-m = table(bank_score$poutcome, bank_score$y)
-n = round(100*prop.table(m,2),2)
-t(n) # column percentages
-n
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-poutcome <- row.names(n)
-poutcome
-
-df1 <- data.frame(no, yes, poutcome)
-df2 <- melt(df1, id.vars='poutcome')
-head(df2)
-
-Graph2 <- ggplot(df2, aes(x=poutcome, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y repartition (in percent)", x = "poutcome")+
-  labs(fill = "titre legend") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90)) 
-Graph2
-grid.arrange(Graph1, Graph2, ncol = 2)
-##unknown seems a predictor of no, while success a predictor of yes VARIABLE POUTCOME IS KEPT
-
-
-# VARIABLE MORE CONTINUE
-
-# check age 
-Graph1 <- bank_score %>%
-  group_by(age) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = age, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by age",
-    x = "age",
-    y = "age 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-# Analysis of distribution of yes and no across age
-m = table(bank_score$age, bank_score$y)
-n = round(100*prop.table(m,2),2)
-t(n) # column percentages
-n
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-age <- row.names(n)
-age
-
-df1 <- data.frame(no, yes, age)
-df2 <- melt(df1, id.vars='age')
-head(df2)
-
-Graph2 <- ggplot(df2, aes(x=age, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y repartition (in percent)", x = "age")+
-  labs(fill = "y") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90)) 
-Graph2
-##HOW TO MAKE IT MORE LEDGIBLE
-grid.arrange(Graph1, Graph2, ncol = 2)
-## It seems there are more no around 30, VARIABLE AGE KEPT
-
-
-# CHECK BALANCE 
-# Given the spread of the continuous value, the boxplot analysis makes more sense here
-# Analysis of distribution of yes and no across balance
-m = table(bank_score$balance, bank_score$y)
-n = round(100*prop.table(m,2),2)
-t(n) # column percentages
-n
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-balance <- row.names(n)
-balance
-
-df1 <- data.frame(no, yes, balance)
-df2 <- melt(df1, id.vars='balance')
-head(df2)
-class(df2$balance)
-df2$balance <- as.numeric(as.character(df2$balance))
-class(df2$balance)
-
-ggplot(df2, aes(x = variable, y = balance, fill = value)) +
-  geom_boxplot() +
-  labs(y = "Balance", x = "Y") +
-  scale_fill_manual(values = c("#CDC8B1", "#9FB6CD")) +
-  theme(axis.text.x = element_text(angle = 90))
-###Most data concentrated between 0 and less that 5,000, many outliers, no special difference between Yes and No observed. Variable balance not kept.
-## WHY ARE YES AND NO THE SAME? HOW TO DEAL WITH OUTLIERS?
-## no trend appears, VARIABLE BALANCE NOT KEPT
-
-# check day 
-#Graph1 <- bank_score %>%
-#  group_by(day) %>%
-#  summarize(avg = mean(y == "yes")) %>%
-#  ggplot(aes(x = day, y = avg)) +
-#  geom_point(stat = "identity", fill = "blue") +
-#  labs(
-#    title = "Average 'Yes' Responses by day",
-#    x = "day",
-#    y = "Average 'Yes' Responses"
-#  ) +
-#  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
-#  geom_smooth()
-Graph1 <- bank_score %>%
-  group_by(day) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = day, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by day",
-    x = "day",
-    y = "day 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-Graph1
-# Analysis of distribution of yes and no across balance
-m = table(bank_score$day, bank_score$y)
-n = round(100*prop.table(m,2),2)
-t(n) # column percentages
-n
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-day <- row.names(n)
-day
-
-df1 <- data.frame(no, yes, day)
-df2 <- melt(df1, id.vars='day')
-head(df2)
-class(df2$day)
-df2$day <- as.numeric(as.character(df2$day))
-class(df2$day)
-
-Graph2<- ggplot(df2, aes(x= day, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y repartition (in percent)", x = "day")+
-  labs(fill = "y") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90)) 
-Graph2
-
-grid.arrange(Graph1, Graph2, ncol = 2)  
-## it seems that from day 5 to 10, more no are present, We will test the model with and without the variable Day
-
-# check duration  
-Graph1 <- bank_score %>%
-  group_by(duration) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = duration, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by day",
-    x = "day",
-    y = "day 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-Graph1
-# Analysis of distribution of yes and no across duration
-m = table(bank_score$duration, bank_score$y)
-n = round(100*prop.table(m,2),2)
-t(n) # column percentages
-n
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-duration <- row.names(n)
-duration
-
-df1 <- data.frame(no, yes, duration)
-df2 <- melt(df1, id.vars='duration')
-head(df2)
-class(df2$duration)
-df2$duration <- as.numeric(as.character(df2$duration))
-class(df2$duration)
-
-Graph2<- ggplot(df2, aes(x= duration, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y repartition (in percent)", x = "duration")+
-  labs(fill = "y") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90)) 
-
-#fROM GRAPH 2, we can see the y=no are moslty on duration below 220, however the boxplot shows similar distribution, I am not sure why. Generally, it seems the boxplot always give me the same distribution
-Graph2 <- ggplot(df2, aes(x = variable, y = duration, fill = value)) +
-  geom_boxplot() +
-  labs(y = "duration", x = "Y") +
-  scale_fill_manual(values = c("#CDC8B1", "#9FB6CD")) +
-  theme(axis.text.x = element_text(angle = 90))
-
-
-grid.arrange(Graph1, Graph2, ncol = 2)  
-###graphs to be improved
-### Same issue with boxplot
-#The trend is not confirmed, VARIABLE DURATION NOT KEPT
-
-# Check campaign  
-Graph1 <- bank_score %>%
-  group_by(campaign) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = campaign, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by day",
-    x = "campaign",
-    y = "campaign 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-Graph1
-#Minor trend
-# Analysis of distribution of yes and no across campaign
-m = table(bank_score$campaign, bank_score$y)
-n = round(100*prop.table(m,2),2)
-t(n) # column percentages
-n
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-campaign <- row.names(n)
-campaign
-
-df1 <- data.frame(no, yes, campaign)
-df2 <- melt(df1, id.vars='campaign')
-head(df2)
-class(df2$campaign)
-df2$campaign <- as.numeric(as.character(df2$campaign))
-class(df2$campaign)
-
-Graph2<- ggplot(df2, aes(x= campaign, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y repartition (in percent)", x = "campaign")+
-  labs(fill = "y") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90)) 
-Graph2
-grid.arrange(Graph1, Graph2, ncol = 2)  
-# Seems more yes below 5, formula to be tested with and without CAMPAIGN
-
-# check pdays  
-Graph1 <- bank_score %>%
-  group_by(pdays) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = pdays, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by day",
-    x = "pdays",
-    y = "pdays 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-Graph1
-#Seems there is a trend toward lowers yest around 250 (150-350)
-# Analysis of distribution of yes and no across pdays
-m = table(bank_score$pdays, bank_score$y)
-n = round(100*prop.table(m,2),2)
-t(n) # column percentages
-n
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-pdays <- row.names(n)
-pdays
-
-df1 <- data.frame(no, yes, pdays)
-df2 <- melt(df1, id.vars='pdays')
-head(df2)
-class(df2$pdays)
-df2$pdays <- as.numeric(as.character(df2$pdays))
-class(df2$pdays)
-
-Graph2<- ggplot(df2, aes(x= pdays, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y repartition (in percent)", x = "pdays")+
-  labs(fill = "y") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90)) 
-Graph2 <- ggplot(df2, aes(x = variable, y = pdays, fill = value)) +
-  geom_boxplot() +
-  labs(y = "pdays", x = "Y") +
-  scale_fill_manual(values = c("#CDC8B1", "#9FB6CD")) +
-  theme(axis.text.x = element_text(angle = 90))
-
-grid.arrange(Graph1, Graph2, ncol = 2)  
-###Same challenges wit boxplot of similar distribution and treatment of outliers
-
-
-# Trend seems minor, VARIABLE PDAY NOT KEPT
-
-# check previous  
-Graph1 <- bank_score %>%
-  group_by(previous) %>%
-  summarize(avg = mean(y == "yes")) %>%
-  ggplot(aes(x = previous, y = avg)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(
-    title = "Average 'Yes' Responses by day",
-    x = "previous",
-    y = "previous 'Yes' Responses"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-Graph1
-
-#Seems there is a trend toward higher yest after 10
-# Analysis of distribution of yes and no across previous
-bank_score$previous
-m = table(bank_score$previous, bank_score$y)
-n = round(100*prop.table(m,2),2)
-t(n) # column percentages
-n
-n[,1]
-n[,2]
-no <- n[,1]
-no
-yes <- n[,2]
-yes
-previous <- row.names(n)
-previous
-
-df1 <- data.frame(no, yes, previous)
-df2 <- melt(df1, id.vars='previous')
-head(df2)
-class(df2$previous)
-df2$previous <- as.numeric(as.character(df2$previous))
-class(df2$previous)
-
-Graph2<- ggplot(df2, aes(x= previous, y=value, fill=variable)) +
-  geom_bar(stat='identity', position='dodge') +
-  labs(y= "y repartition (in percent)", x = "previous")+
-  labs(fill = "y") +
-  scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
-  theme(axis.text.x = element_text(angle = 90)) 
-Graph2
-grid.arrange(Graph1, Graph2, ncol = 2) 
-# Seems No are concentrated at 0, VARIABLE PREVIOUS KEPT
+g1g2 = twograph("marital","Marital")
+#Visual difference between yes and no: variable to keep
+
+# check education
+g1g2 = twograph("education","Education")
+#Visual difference between yes and no: variable to keep
+
+
+# check default
+g1g2 = twograph("default","Default")
+#the variable does not seem to have an impact, it will be tested further
+
+# check housing
+g1g2 = twograph("housing","Housing")
+#Visual difference between yes and no: variable to keep
+  
+# check loan
+g1g2 = twograph("loan","Loan")
+#Visual difference between yes and no: variable to keep
+
+#check month
+g1g2 = twograph("month","Month",
+                c("jan","feb","mar","apr","may",
+                  "jun", "jul", "aug", "sep","oct",
+                  "nov", "dec"))
+#Visual difference between yes and no: variable to keep
+
+# check poutcome
+g1g2 = twograph("poutcome","Poutcome")
+#Visual difference between yes and no, however, interpretation is uncertain: variable to test
+
+#check day
+g1g2 = twograph("day","Day",
+                as.character(seq(1:31)))
+#Visual difference between yes and no, however, interpretation can be difficult because of granular data: variable to test
+
+# check age
+g1g2 = twograph("age","Age",
+                as.character(seq(min(bank_score$age),
+                                 max(bank_score$age),
+                                 by=1)))
+#Visual difference between yes and no, however, interpretation can be difficult because of granular data: variable to test
+
+# Check campaign
+g1g2 = twograph("campaign","Campaign",
+                as.character(seq(min(bank_score$campaign),
+                                 max(bank_score$campaign),
+                                 by=1)))
+#Visual difference between yes and no, however, interpretation uncertain because of granular data: variable to test
+
+# check previous
+g1g2 = twograph("previous","Previous",
+                as.character(seq(min(bank_score$previous),
+                                 max(bank_score$previous),
+                                 by=1)))
+#Visual difference between yes and no, however, interpretation uncertain because of granular data: variable to test
+
+######################################
+########## continuous variables : boxplot ###
+######################################
+
+onegraph_boxp <- function (namevar,labelvar, bank_score_) {
+  data_score=bank_score_[,c(namevar,"y")]
+  names(data_score) <- c("x","y")
+  data_score$y <- factor(data_score$y,
+                         levels=c("yes","no"))
+  bp <- ggplot(data_score, aes(y, x))
+  bp <- bp + geom_boxplot(fill = "#FFFFFF", color = "#FFFFFF")
+  bp <- bp + geom_boxplot(aes(fill = y))
+  bp <- bp + scale_fill_manual(values = c("#CDC8B1","#9FB6CD"))
+  bp <- bp +labs(
+    title = "Boxplots",
+    x = " ",
+    y = labelvar
+  )
+  bp <- bp + theme(legend.position = "right")
+  # bp
+  
+  return (bp)
+}
+
+p <- onegraph_boxp("balance","Balance",bank_score)
+plot(p)
+
+##We see we could consider amounts beyond ZMW 10,000
+p <- onegraph_boxp("balance","Balance",bank_score[bank_score$balance<=10000,])
+plot(p)
+#seems to be a difference: variable to test taking about outliers above 20,000
+
+#Age
+p <- onegraph_boxp("age","Age",bank_score)
+plot(p)
+# seems to be a slight difference, variable to test
+
+# check duration
+p <- onegraph_boxp("duration","Duration", bank_score)
+plot(p)
+#We can remove outliers beyond 1000
+p <- onegraph_boxp("duration","Duration", bank_score[bank_score$duration<=1000,])
+plot(p)
+# to be tested without outliers
+
+# check pdays
+p <- onegraph_boxp("pdays","Pdays", bank_score)
+plot(p)
+#We can remove outliers beyond 250
+p <- onegraph_boxp("pdays","Pdays", bank_score[bank_score$pdays<=250,])
+plot(p)
+#to be tested without outliers
+
+# check previous
+p <- onegraph_boxp("previous","Previous", bank_score)
+plot(p)
+#Remove outliers above 10
+p <- onegraph_boxp("previous","Previous", bank_score[bank_score$previous<=10,])
+plot(p)
 
 
 #Next steps use lm, loess, knn
 #Creation train set
-bank_score$y
-test_index <- createDataPartition(y= bank_score$y, times = 1, p=0.15, list = FALSE)
-bank_score_train <- bank_score[-test_index,]
-bank_score_test <- bank_score[test_index,]
-nrow(bank_score)-nrow(bank_score_train)-nrow(bank_score_test)
-?createDataPartition
+#bank_score$y
+#test_index <- createDataPartition(y= bank_score$y, times = 1, p=0.15, list = FALSE)
+#bank_score_train <- bank_score[-test_index,]
+#bank_score_test <- bank_score[test_index,]
+#nrow(bank_score)-nrow(bank_score_train)-nrow(bank_score_test)
+#?createDataPartition
 
 
 ###############
 #Part 2 - Preparing the sample
 #################
-#sum(bank_score$y=="yes")/nrow(bank_score)
-#0.111
-#The share of yes is very low, therefore we want to increase the share of yes in the sample
 
 ###Create a train and test set making sure the proportion of yes remains the same
 dataset <- bank_score
@@ -834,7 +289,7 @@ bank_score_set = rbind(bank_score_set0,bank_score_set1)
 bank_score_set
 final_holdout_set= rbind(finalholdout_set0,finalholdout_set1)
 final_holdout_set
-nrow(Bank_Score_set)+nrow(Final_Holdout_set)-nrow(dataset)
+nrow(bank_score_set)+nrow(final_holdout_set)-nrow(dataset)
 
 #We split Bank_Score_set between train and test set to assess the different models
 dataset <- bank_score_set
@@ -860,8 +315,8 @@ train_set1
 train_set =rbind(train_set0,train_set1)
 train_set
 
-?levels
-unique(train_set$y)
+#?levels
+#unique(train_set$y)
 test_set  =rbind(test_set0,set_set1)
 test_set
 
@@ -871,141 +326,124 @@ nrow(train_set)+nrow(test_set)-nrow(dataset)
 ##I DO NOT UNDERSTAND WHAT THE BELOW IS DOING,I UNDERSTOOD WE WANTED 50% YES AND NO IN BOTH TEST AND TRAIN
 #train_set= train_set[sample(1:nrow(train_set)), ]
 #test_set= test_set[sample(1:nrow(test_set)), ]
-
 #nrow(train_set)+nrow(test_set)-nrow(dataset)
-
 #table(train_set$y)
 #table(test_set$y)
-
 #table(train_set$y) / length(train_set$y)
 #table(test_set$y) / length(test_set$y)
 
-
-###Couleurs des graphs
-### to do: similar approach as movielens with edX and holdhout
-###glmnet
-## trControl = trainControl("cv", number = 10)
-## dealing with unbalanced dataset
-##Ovesampling
 ## Confusion matrix
 
 
-
 #Variable kept:job -  education -  marital -  loan - month - poutcome - age - previous
-
 #Variable to test: day - yes
-
 # Variable to no keep: balance, duration, pday
 
 
 head(train_set)
 na
 
-#only with variable job
-train_glm <- train(y ~ job, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
+###PART 3 TRAIN THE MODEL
+#######################
+#We will for sure keep the variables job -  education -  marital - housing-  loan – month  
+#and test the variables default day – poutcome – age - campaign- previous (removing outliers beyond 10) -  balance (taking out outliers beyond 10,000), duration (taking out outliers beyond 1,000), pdays(without outliers beyond 250
+# let us remove the outliers
 
-#only with variable job+marital
-train_glm <- train(y ~ job+marital, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
-#no change in accuracy
+train_set <- train_set[train_set$previous<=10,]
+train_set <- train_set[train_set$balance<=10000,]
+train_set <- train_set[train_set$duration<=1000,]
+train_set <- train_set[train_set$pdays<=250,]
 
-#only with variable job+marital+education
-train_glm <- train(y ~ job+marital+education, method="glm", data = train_set)
+                                                                                                                                                                                                          
+#only with variable job -  education -  marital - housing-  loan – month
+train_glm <- train(y ~ job + education + marital + housing + loan + month, method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
-#no change in accuracy
+#0.8954
 
-#only with variable job+marital+education+housing
-train_glm <- train(y ~ job+marital+education+housing, method="glm", data = train_set)
+#test day
+train_glm <- train(y ~ job + education + marital + housing + loan + month+ day, method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
-#no change in accuracy
+#Accuracy unchanged, it does not matter if we keep day
 
-#only with variable job+marital+education+housing+month
-train_glm <- train(y ~ job+marital+education+housing+month, method="glm", data = train_set)
+#test poutcome
+train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome, method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
-#improvement in accuracy
+#Accuracy increases to 0.9062, poutcome to be kept
 
-#only with variable job+marital+education+housing+month+loan
-train_glm <- train(y ~ job+marital+education+housing+month+loan, method="glm", data = train_set)
+#test age
+train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age, method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
-#stable accuracy
+#Accuracy increases, age to be kept
 
-#only with variable job+marital+education+housing+month+loan+poutcome
-train_glm <- train(y ~ job+marital+education+housing+month+loan+poutcome, method="glm", data = train_set)
+#test campaign
+train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ campaign, method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
-#deterioration of accuracy, we remove outcome
+#Accuracy decreases, campaign is not to be kept
 
-#only with variable job+marital+education+housing+month+loan+age
-train_glm <- train(y ~ job+marital+education+housing+month+loan+age, method="glm", data = train_set)
+#test previous
+train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous, method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
-#stable accuracy
+#Accuracy unchanged, we can keep it or not
 
-#only with variable job+marital+education+housing+month+loan+age+previous
-train_glm <- train(y ~ job+marital+education+housing+month+loan+age+previous, method="glm", data = train_set)
+#test default
+train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default, method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
-#previous is deteriorating the regression
+#Accuracy decreases we do not keep default
 
-#only with variable job+marital+education+housing+month+loan+age+campaign
-train_glm <- train(y ~ job+marital+education+housing+month+loan+age+campaign, method="glm", data = train_set)
+#test balance
+train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ balance, method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
-#campaign is deteriorating the regression
+#Accuracy decreases we do not keep balance
 
-#only with variable job+marital+education+housing+month+loan+age+day
-train_glm <- train(y ~ job+marital+education+housing+month+loan+age+campaign+day, method="glm", data = train_set)
+#test duration
+train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
-#day is deteriorating the regression
+#Accuracy improves, we keep duration
 
-#What about if I use all variables 
-train_glm <- train(y ~ ., method="glm", data = train_set)
+#test pdays
+train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration+pdays, method="glm", data = train_set)
 glm_pred <- predict(train_glm, train_set)
 mean(glm_pred==train_set$y)
-#deterioration of the prediction
-
-#We will keep only the variable job+marital+education+housing+month+loan+age
-train_glm <- train(y ~ job+marital+education+housing+month+loan+age, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
+#Accuracy decreases, we do not keep pdays
+##I WOULD NEED TO ADD A CONFUSION MATRIX HERE
 
 
 #Perform knn method
-train_knn <- train(y ~ job+marital+education+housing+month+loan+age, method="knn", data = train_set)
+train_knn <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="knn", data = train_set)
 knn_pred <- predict(train_knn, train_set)
 knn_pred
 mean(knn_pred==train_set$y)
 
 #Perform knn method with best fit for k
-train_knn2 <- train(y ~ job+marital+education+housing+month+loan+age, method="knn", data = train_set, tuneGrid = data.frame(k=seq(1,50,2)))
+train_knn2 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="knn", data = train_set, tuneGrid = data.frame(k=seq(1,50,2)))
 train_knn2
 ggplot(train_knn2)
 
-knn_pred <- predict(train_knn, train_set)
+knn_pred <- predict(train_knn2, train_set)
 knn_pred
 mean(knn_pred==train_set$y)
-#best accuracy when k=1 DOES IT MAKE SENSE?
-#Perform knn method with cross validation 
-train_knn2_cv <- train(y ~ job+marital+education+housing+month+loan+age, method="knn", data = train_set, tuneGrid = data.frame(k=seq(1,50,2)), trControl = trainControl(method="cv", number = 10, p =0.9))
+
+#Perform knn method with cross validation and identification of best k
+train_knn2_cv <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="knn", data = train_set, tuneGrid = data.frame(k=seq(1,50,2)), trControl = trainControl(method="cv", number = 10, p =0.9))
 train_knn2_cv$bestTune
-##The value of 49 does not seem to match the best value from the grph of 2.
 ggplot(train_knn2_cv)
-
-
-ggplot(train_knn2)
-
+#The best value are 16 and 31
+best_k <- 16
+train_knn <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="knn", data = train_set, tuneGrid = data.frame(k = best_k), trControl = trainControl(method="cv", number = 10, p =0.9))
 knn_pred <- predict(train_knn, train_set)
-knn_pred
 mean(knn_pred==train_set$y)
+#best prediction using kbb is 0.90465
 
+##I WOULD NEED TO ADD A CONFUSION MATRIX HERE
 
 #I FACE LEVEL ISSUES AND DO NOT MANAGE TO PRODUCE A CONFUSION MATRIX
 #levels(knn_pred$y)
@@ -1041,6 +479,7 @@ train_rpart_rf <- train(y ~ .,
                     data = train_set)
 train_rpart_rf
 train_rpart_rf$bestTune
+
 #not too sure how to interpret the data
 #confusionMatrix(predict(train_rf_2, mnist_27$test), mnist_27$test$y)$overall["Accuracy"]
 
