@@ -322,6 +322,21 @@ test_set
 
 nrow(train_set)+nrow(test_set)-nrow(dataset)
 
+#Build a balanced sample instead
+sum(train_set$y == "yes")
+sum(train_set$y == "no")
+
+# Create a balanced sample with 521 observations of each class
+train_balanced <- train_set %>%
+  group_by(y) %>%
+  sample_n(size = 423)
+train_balanced
+sum(train_balanced$y== "yes")
+sum(train_balanced$y== "no")
+
+# Ungroup the data
+train_balanced <- ungroup(train_balanced)
+
 
 ##I DO NOT UNDERSTAND WHAT THE BELOW IS DOING,I UNDERSTOOD WE WANTED 50% YES AND NO IN BOTH TEST AND TRAIN
 #train_set= train_set[sample(1:nrow(train_set)), ]
@@ -347,100 +362,169 @@ na
 #######################
 #We will for sure keep the variables job -  education -  marital - housing-  loan – month  
 #and test the variables default day – poutcome – age - campaign- previous (removing outliers beyond 10) -  balance (taking out outliers beyond 10,000), duration (taking out outliers beyond 1,000), pdays(without outliers beyond 250
-# let us remove the outliers
 
+# Removing of the outliers
 train_set <- train_set[train_set$previous<=10,]
 train_set <- train_set[train_set$balance<=10000,]
 train_set <- train_set[train_set$duration<=1000,]
 train_set <- train_set[train_set$pdays<=250,]
 
+functionerror <- function(train_glm,train_set,test_set) {
+  glm_pred_train <- predict(train_glm, train_set)
+  glm_pred_test  <- predict(train_glm, test_set)
+  cat("______________________________________\n")
+  cat(paste(" ",train_glm$method,"  ", as.character(train_glm$call)[2],sep=""),"\n",
+      paste(train_glm$method,"-> accuracy train = ",sep=""),
+      round(mean(glm_pred_train==train_set$y),4),"\n",
+      paste(train_glm$method,"-> accuracy test  = ",sep=""),
+      round(mean(glm_pred_test==test_set$y),4),"\n")
+  tables2 = cbind(table(glm_pred_train,train_set$y),
+                  table(glm_pred_test,test_set$y))
+  cat("--------------------------------------\n")
+  cat(paste(" ",train_glm$method,"-> confusion matrices (train|test)\n",sep=""))
+  print(tables2)
+  cat("______________________________________\n")
+  return (list(glm_pred_train=glm_pred_train,glm_pred_test=glm_pred_test,
+               train_glm=train_glm,train_set=train_set,test_set=test_set))
+}
+
+
+#train_glm <- train(y ~ job, method="glm", data = train_set)
+
                                                                                                                                                                                                           
 #only with variable job -  education -  marital - housing-  loan – month
 train_glm <- train(y ~ job + education + marital + housing + loan + month, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
+glm1 = functionerror(train_glm,train_set,test_set) 
+# Accuracy 0.8793 - good yes 24
+
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month, method="glm", data = train_balanced)
+glm1 = functionerror(train_glm_balanced,train_balanced,test_set) 
+train_balanced
+# Accuracy 0.6407 - good yes 250/24
+
+
+#glm_pred <- predict(train_glm, train_set)
+#mean(glm_pred==train_set$y)
 #0.8954
 
 #test day
 train_glm <- train(y ~ job + education + marital + housing + loan + month+ day, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
+glm2 = functionerror(train_glm,train_set,test_set) 
+# Accuracy 0.8793 - good yes 22
+
+
+#glm_pred <- predict(train_glm, train_set)
+#mean(glm_pred==train_set$y)
 #Accuracy unchanged, it does not matter if we keep day
 
 #test poutcome
 train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
+glm3 = functionerror(train_glm,train_set,test_set) 
+#Accuracy 0.9064 and yesyes 55
+
+#glm_pred <- predict(train_glm, train_set)
+#mean(glm_pred==train_set$y)
 #Accuracy increases to 0.9062, poutcome to be kept
 
 #test age
 train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
+glm4 = functionerror(train_glm,train_set,test_set) 
+#Accuracy 0.9039 and yesyes 55
+
 #Accuracy increases, age to be kept
 
 #test campaign
 train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ campaign, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
+glm5 = functionerror(train_glm,train_set,test_set) 
+# Accuracy 0.9039 and yesyes 54
+
+#glm_pred <- predict(train_glm, train_set)
+#mean(glm_pred==train_set$y)
 #Accuracy decreases, campaign is not to be kept
 
 #test previous
 train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
-#Accuracy unchanged, we can keep it or not
+glm6 = functionerror(train_glm,train_set,test_set) 
+# Accuracy 0.9064 and yesyes 56
 
 #test default
 train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
+glm7 = functionerror(train_glm,train_set,test_set) 
+# Accuracy 0.9064 and yesyes 55
+
 #Accuracy decreases we do not keep default
 
 #test balance
 train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ balance, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
-#Accuracy decreases we do not keep balance
+glm8 = functionerror(train_glm,train_set,test_set) 
+# Accuracy 0.9015 and yesyes 54
 
 #test duration
 train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
+glm9 = functionerror(train_glm,train_set,test_set) 
+# Accuracy 0.9039 and yesyes 121
+
+
+#glm_pred <- predict(train_glm, train_set)
+#mean(glm_pred==train_set$y)
 #Accuracy improves, we keep duration
 
 #test pdays
 train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration+pdays, method="glm", data = train_set)
-glm_pred <- predict(train_glm, train_set)
-mean(glm_pred==train_set$y)
+glm10 = functionerror(train_glm,train_set,test_set) 
+# Accuracy 0.899 and yesyes 118
+
+#glm_pred <- predict(train_glm, train_set)
+#mean(glm_pred==train_set$y)
 #Accuracy decreases, we do not keep pdays
 ##I WOULD NEED TO ADD A CONFUSION MATRIX HERE
 
-
-#Perform knn method
-train_knn <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="knn", data = train_set)
-knn_pred <- predict(train_knn, train_set)
-knn_pred
-mean(knn_pred==train_set$y)
+######
+ 
+  
+  
+#Perform knn method without any adjustement
+train_knn1 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="knn", data = train_set)
+#knn_pred <- predict(train_knn, train_set)
+knn1 = functionerror(train_knn1,train_set,test_set) 
+#accuracy 0.8941 yes/yes 65
+#knn_pred
+#mean(knn_pred==train_set$y)
 
 #Perform knn method with best fit for k
-train_knn2 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="knn", data = train_set, tuneGrid = data.frame(k=seq(1,50,2)))
+train_knn2 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="knn", 
+                    data = train_set, 
+                    tuneGrid = data.frame(k=seq(1,50,2)))
 train_knn2
 ggplot(train_knn2)
 
-knn_pred <- predict(train_knn2, train_set)
-knn_pred
-mean(knn_pred==train_set$y)
+#nrow(train_set)
+#accuracy: (nono+yesyes/ (all))
+#taux (yesno+noyes)/all
+#knn_pred <- predict(train_knn2, train_set)
+#knn_pred
+#mean(knn_pred==train_set$y)
 
 #Perform knn method with cross validation and identification of best k
 train_knn2_cv <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="knn", data = train_set, tuneGrid = data.frame(k=seq(1,50,2)), trControl = trainControl(method="cv", number = 10, p =0.9))
 train_knn2_cv$bestTune
+train_knn2_cv$bestTune[1,]
+
 ggplot(train_knn2_cv)
-#The best value are 16 and 31
-best_k <- 16
-train_knn <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="knn", data = train_set, tuneGrid = data.frame(k = best_k), trControl = trainControl(method="cv", number = 10, p =0.9))
-knn_pred <- predict(train_knn, train_set)
-mean(knn_pred==train_set$y)
+
+best_k <- train_knn2_cv$bestTune[1,]
+best_k
+train_knn_3 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="knn", 
+                      data = train_set, tuneGrid = data.frame(k = best_k), 
+                      trControl = trainControl(method="cv", number = 10, p =0.9))
+train_knn_3
+knn2 = functionerror(train_knn_3,train_set,test_set) 
+#Accuracy decrease to 0.8892 and yes/yes to 45
+
+#knn_pred <- predict(train_knn, train_set)
+#mean(knn_pred==train_set$y)
+
+
 #best prediction using kbb is 0.90465
 
 ##I WOULD NEED TO ADD A CONFUSION MATRIX HERE
@@ -456,29 +540,102 @@ mean(knn_pred==train_set$y)
 ##prediction is not as good as prediction for the glm
 #rf
 train_rf <- train(y ~ job+marital+education+housing+month+loan+age, method="rf", data = train_set)
-rf_pred <- predict(train_rf, train_set)
-mean(rf_pred==train_set$y)
+rf1 = functionerror(train_rf,train_set,test_set) 
+
+#rf_pred <- predict(train_rf, train_set)
+#mean(rf_pred==train_set$y)
 
 train_rf <- train(y ~job+marital+education+housing+month+loan+poutcome+age+previous, method="rf", data = train_set)
-rf_pred <- predict(train_rf, train_set)
-mean(rf_pred==train_set$y)
+rf2 = functionerror(train_rf,train_set,test_set) 
+
+#rf_pred <- predict(train_rf, train_set)
+#mean(rf_pred==train_set$y)
 #not as good as glm
-confusionMatrix(rf_pred, train_set$y)$overall[["Accuracy"]]
+#confusionMatrix(rf_pred, train_set$y)$overall[["Accuracy"]]
 
 #Let's try rf with all values
-train_rf <- train(y ~., method="rf", data = train_set)
-rf_pred <- predict(train_rf, train_set)
-mean(rf_pred==train_set$y)
+#train_rf <- train(y ~., method="rf", data = train_set)
+#rf_pred <- predict(train_rf, train_set)
+#mean(rf_pred==train_set$y)
 
 # use cross validation to choose parameter
+# Define a range of values for ntree to tune over
+
 mtry= seq(1,7)
 train_rpart_rf <- train(y ~ .,
                     method = "rf",
-                    ntree=100,
+                    #ntree= 100,
                     tuneGrid = data.frame(mtry= seq(1,7)),
                     data = train_set)
 train_rpart_rf
 train_rpart_rf$bestTune
+
+ntree_values <- c(50, 100, 150, 200)
+
+train_rpart_rf <- train(y ~ .,
+                        method = "rf",
+                        ntree= ntree_value,
+                        tuneGrid = data.frame(mtry= train_rpart_rf$bestTune),
+                        data = train_set)
+
+
+##nouveau code
+library(caret) 
+library(mlbench)
+
+set.seed(1234)
+#validation croisee avec 5 traine et test
+cv_folds <- createFolds(train_set$y, k = 5, returnTrain = TRUE)
+
+#grille du rf
+tuneGrid <- expand.grid(.mtry = c(1 : 10))
+
+#essayer cv=5 et cv=10
+#controle qui fait la cross validation
+ctrl <- trainControl(method = "cv",
+                     number = 5,
+                     search = 'grid',
+                     classProbs = TRUE,
+                     savePredictions = "final",
+                     index = cv_folds,
+                     summaryFunction = twoClassSummary) 
+#in most cases a better summary for two class problems 
+
+ntrees <- c(50, 100, 150)
+nodesize <- c(1, 5)
+
+#rajouter mtry
+params <- expand.grid(ntrees = ntrees,
+                      nodesize = nodesize)
+
+#renommer list_rf
+store_maxnode <- vector("list", nrow(params))
+
+for(i in 1:nrow(params)){
+  nodesize <- params[i,2]
+  ntree <- params[i,1]
+  set.seed(65)
+  rf_model <- train(y~.,
+                    data = train_set,
+                    method = "rf",
+                    importance=TRUE,
+                    metric = "ROC",
+                    tuneGrid = tuneGrid,
+                    trControl = ctrl,
+                    ntree = ntree,
+                    nodesize = nodesize)
+  store_maxnode[[i]] <- rf_model
+  #calcule le temps
+  cat("i=",i,"/",nrow(params),"\n")
+  #print(rf_model)
+}
+
+names(store_maxnode) <- paste("ntrees:", params$ntrees,
+                              "nodesize:", params$nodesize)
+
+results_mtry <- resamples(store_maxnode)
+
+summary(results_mtry)
 
 #not too sure how to interpret the data
 #confusionMatrix(predict(train_rf_2, mnist_27$test), mnist_27$test$y)$overall["Accuracy"]
