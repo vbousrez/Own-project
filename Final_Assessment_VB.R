@@ -5,6 +5,12 @@ library(ggplot2)
 library(caret)
 library(reshape2)
 library(gridExtra)
+library(ROSE)
+library(randomForest)
+library(caret)
+library(e1071)
+library(mlbench)
+library(pROC)
 
 
 setwd("C:/Users/vladi/OneDrive/Documents/R/Final_Assessment/Option 2")
@@ -19,20 +25,14 @@ head(bank_score)
 str(bank_score)
 summary(bank_score)
 
-
-#for (j in 1:length(var_cat)) {
-#  cat("________________________ \n")
-#  cat(var_cat[j],"\n")
-#  print(table(bank_score[,var_cat[j]]))
-}
-
-
-#Empty columns
+#Empty columns: do we have any column with empty cell?
 Empty <- for (j in 1:ncol(bank_score)) {
   sum(is.na(bank_score)[j])
 }
 Empty
+#No cell empty
 
+#verification line by line
 sum(is.na(bank_score$age))
 sum(is.na(bank_score$job))
 sum(is.na(bank_score$marital))
@@ -50,21 +50,18 @@ sum(is.na(bank_score$pdays))
 sum(is.na(bank_score$previous))
 sum(is.na(bank_score$poutcome))
 sum(is.na(bank_score$y))
+#no empty cell 
 
 
-#This tells us the number of unique value??
+#Let us check how many unique value per variable
 for (j in 1:ncol(bank_score)) {
   cat(names(bank_score)[j], "\t", length(unique(bank_score[,j])),"\n")
 }
 
-###############CHECK NEW METHOD
-######################################
-########## categorical variables : barplot ####
-######################################
+###############DATA VISUALIZATION
+###############DISCRETE VARIABLE
 
-#colors <- c("No" = "lightyellow", "Yes" = "lightblue")
-#par(mfrow=c(1,2))
-
+#Function to produce graphs
 twograph <- function(namevar,labelvar,xfactors=NULL) {
   data_score=bank_score[,c(namevar,"y")]
   names(data_score) <- c("x","y")
@@ -191,9 +188,7 @@ g1g2 = twograph("previous","Previous",
                                  by=1)))
 #Visual difference between yes and no, however, interpretation uncertain because of granular data: variable to test
 
-######################################
 ########## continuous variables : boxplot ###
-######################################
 
 onegraph_boxp <- function (namevar,labelvar, bank_score_) {
   data_score=bank_score_[,c(namevar,"y")]
@@ -251,17 +246,6 @@ plot(p)
 p <- onegraph_boxp("previous","Previous", bank_score[bank_score$previous<=10,])
 plot(p)
 
-
-#Next steps use lm, loess, knn
-#Creation train set
-#bank_score$y
-#test_index <- createDataPartition(y= bank_score$y, times = 1, p=0.15, list = FALSE)
-#bank_score_train <- bank_score[-test_index,]
-#bank_score_test <- bank_score[test_index,]
-#nrow(bank_score)-nrow(bank_score_train)-nrow(bank_score_test)
-#?createDataPartition
-
-
 ###############
 #Part 2 - Preparing the sample
 #################
@@ -275,11 +259,13 @@ dataset1 = dataset[dataset$y=="yes",]
 nrow(dataset0)+nrow(dataset1)-nrow(dataset)
 
 #We split data set of no into bank_score_set and final holdout to test the final model
+set.seed(123)
 tt_index0 <- createDataPartition(dataset0$y,times=1,p=0.9,list=FALSE)
 bank_score_set0 <- dataset0[tt_index0, ]
 finalholdout_set0 <- dataset0[-tt_index0, ]
 
 #We split data set of yes into train and test
+set.seed(1234)
 tt_index1 <- createDataPartition(dataset1$y,times=1,p=0.9,list=FALSE)
 bank_score_set1 <- dataset1[tt_index1, ]
 finalholdout_set1 <- dataset1[-tt_index1, ]
@@ -300,11 +286,13 @@ dataset1 = dataset[dataset$y=="yes",]
 nrow(dataset0)+nrow(dataset1)-nrow(dataset)
 
 #We split data set of no into bank_score_set and final holdout to test the final model
+set.seed(123)
 tt_index0 <- createDataPartition(dataset0$y,times=1,p=0.9,list=FALSE)
 train_set0 <- dataset0[tt_index0, ]
 test_set0 <- dataset0[-tt_index0, ]
 
 #We split data set of yes into train and test
+set.seed(123)
 tt_index1 <- createDataPartition(dataset1$y,times=1,p=0.9,list=FALSE)
 train_set1 <- dataset1[tt_index1, ]
 set_set1 <- dataset1[-tt_index1, ]
@@ -315,7 +303,6 @@ train_set1
 train_set =rbind(train_set0,train_set1)
 train_set
 
-#?levels
 #unique(train_set$y)
 test_set  =rbind(test_set0,set_set1)
 test_set
@@ -326,28 +313,12 @@ nrow(train_set)+nrow(test_set)-nrow(dataset)
 sum(train_set$y == "yes")
 sum(train_set$y == "no")
 
-# Create a balanced sample with 521 observations of each class
-train_balanced <- train_set %>%
-  group_by(y) %>%
-  sample_n(size = 423)
-train_balanced
-sum(train_balanced$y== "yes")
-sum(train_balanced$y== "no")
+set.seed(1234)
+bank_score_set_over <- ovun.sample(y~., data = train_set,
+                                   method = "under", N = sum(train_set$y=="yes")*2)$data
+table(bank_score_set_over$y)
+train_balanced = bank_score_set_over
 
-# Ungroup the data
-train_balanced <- ungroup(train_balanced)
-nrow(train_balanced)
-
-##I DO NOT UNDERSTAND WHAT THE BELOW IS DOING,I UNDERSTOOD WE WANTED 50% YES AND NO IN BOTH TEST AND TRAIN
-#train_set= train_set[sample(1:nrow(train_set)), ]
-#test_set= test_set[sample(1:nrow(test_set)), ]
-#nrow(train_set)+nrow(test_set)-nrow(dataset)
-#table(train_set$y)
-#table(test_set$y)
-#table(train_set$y) / length(train_set$y)
-#table(test_set$y) / length(test_set$y)
-
-head(train_set)
 
 ###PART 3 TRAIN THE MODEL
 #######################
@@ -369,6 +340,7 @@ train_balanced <- train_balanced[train_balanced$duration<=1000,]
 train_balanced <- train_balanced[train_balanced$pdays<=250,]
 nrow(train_balanced)
 
+#Function to automatically identify accuracy, error and AUC
 functionerror <- function(train_glm,train_set,test_set) {
   glm_pred_train <- predict(train_glm, train_set)
   glm_pred_test  <- predict(train_glm, test_set)
@@ -388,21 +360,14 @@ functionerror <- function(train_glm,train_set,test_set) {
                train_glm=train_glm,train_set=train_set,test_set=test_set))
 }
 
-
-#train_glm <- train(y ~ job, method="glm", data = train_set)
-
-                                                                                                                                                                                                          
 #only with variable job -  education -  marital - housing-  loan – month
 train_glm <- train(y ~ job + education + marital + housing + loan + month, method="glm", data = train_set)
 glm1 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.8842 - however, yes yes only 2/46
+#Test with balanced set
 train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month, method="glm", data = train_balanced)
 glm1_bal = functionerror(train_glm_balanced,train_balanced,test_set) 
 # Accuracy 0.6897 - good yes 23/26 - lower accuracy but better prediction of yes 
-
-#glm_pred <- predict(train_glm, train_set)
-#mean(glm_pred==train_set$y)
-#0.8954
 
 #test day
 train_glm <- train(y ~ job + education + marital + housing + loan + month+ day, method="glm", data = train_set)
@@ -483,7 +448,7 @@ glm9_bal = functionerror(train_glm_balanced,train_set,test_set)
 #Accuracy improves, we keep duration
 
 #test pdays
-train_glm <- train(y ~ y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration+pdays, method="glm", data = train_set)
+train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration+pdays, method="glm", data = train_set)
 glm10 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.917 and yesyes 23/46
 train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration+pdays, method="glm", data = train_balanced)
@@ -498,55 +463,13 @@ glm10_bal = functionerror(train_glm_balanced,train_set,test_set)
 #Accuracy decreases, we do not keep pdays
 ##I WOULD NEED TO ADD A CONFUSION MATRIX HERE
 
-######
+######knn
  
-  
-  
 #Perform knn method without any adjustement
-train_knn1 <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration, method="knn", data = train_set)
-#knn_pred <- predict(train_knn, train_set)
-knn1 = functionerror(train_knn1,train_set,test_set) 
-#accuracy 0.8744 yes/yes 4/46
-#Perform knn method without any adjustement on balance sample
+#given the previous results, we will perform straight with the balanced_sample
 train_knn1_bal <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration, method="knn", data = train_balanced)
-#knn_pred <- predict(train_knn, train_set)
 knn1_bal = functionerror(train_knn1_bal,train_set,test_set) 
 #accuracy 0.7241 and accuracy 30/46
-
-
-#knn_pred
-#mean(knn_pred==train_set$y)
-
-#Perform knn method with best fit for k
-#train_knn2 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous+ duration, method="knn", 
-  #                  data = train_set, 
-   #                 tuneGrid = data.frame(k=seq(1,50,2)))
-#train_knn2
-#ggplot(train_knn2)
-
-#nrow(train_set)
-#accuracy: (nono+yesyes/ (all))
-#taux (yesno+noyes)/all
-#knn_pred <- predict(train_knn2, train_set)
-#knn_pred
-#mean(knn_pred==train_set$y)
-
-#Perform knn method with cross validation and identification of best k
-#identification of best tune
-train_knn2_cv <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration, method="knn", data = train_set, tuneGrid = data.frame(k=seq(1,50,2)), trControl = trainControl(method="cv", number = 10, p =0.9))
-train_knn2_cv$bestTune
-train_knn2_cv$bestTune[1,]
-
-ggplot(train_knn2_cv)
-
-best_k <- train_knn2_cv$bestTune[1,]
-best_k
-train_knn_3 <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration, method="knn", 
-                      data = train_set, tuneGrid = data.frame(k = best_k), 
-                      trControl = trainControl(method="cv", number = 10, p =0.9))
-train_knn_3
-knn3 = functionerror(train_knn_3,train_set,test_set) 
-#Accuracy increases to 0.8916 and yes/yes to 8/46
 
 #Perform knn method with cross validation and identification of best k on balanced sample
 #identification of best tune
@@ -559,137 +482,73 @@ train_knn2_cv_bal$bestTune
 train_knn2_cv_bal$bestTune[1,]
 
 ggplot(train_knn2_cv_bal)
+knn3_bal = functionerror(train_knn2_cv_bal,train_set,test_set) 
 
-best_k_bal <- train_knn2_cv_bal$bestTune[1,]
-best_k_bal
-train_knn_3_bal <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration, method="knn", 
-                     data = train_balanced,
-                     tuneGrid = data.frame(k = best_k_bal), 
-                     trControl = trainControl(method="cv",number = 10, p =0.9))
-train_knn_3_bal
-knn3 = functionerror(train_knn_3_bal,train_set,test_set) 
-#Accuracy decreases to 0.6773 and yes/yes to 31/46
-###WHY DOES IT DECREASE WITH OPTIMIZATION OF PARAMETER
+##########rf
 
-
-
-#knn_pred <- predict(train_knn, train_set)
-#mean(knn_pred==train_set$y)
-
-
-##I WOULD NEED TO ADD A CONFUSION MATRIX HERE
-
-#I FACE LEVEL ISSUES AND DO NOT MANAGE TO PRODUCE A CONFUSION MATRIX
-#levels(knn_pred$y)
-#levels(train_set$y)
-#knn_pred$y <- factor(knn_pred$y, levels = levels(train_set$y))
-#train_set$y <- factor(knn_pred$y, levels = levels(train_set$y))
-#unique(train_set$y)
-#confusionMatrix(knn_pred, train_set$y)$overall[["Accuracy"]]
 
 ##prediction is not as good as prediction for the glm
-#rf
-train_rf <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration, method="rf", data = train_set)
-rf1 = functionerror(train_rf,train_set,test_set) 
 # rf1 with unbalanced data set does not predict any yes
-train_rf_bal <- train(y ~ job+marital+education+housing+month+loan+age, method="rf", data = train_balanced)
-rf1 = functionerror(train_rf_bal,train_set,test_set) 
+train_rf_bal <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration, method="rf", data = train_balanced)
+rf1 = functionerror(train_rf_bal,train_balanced,test_set) 
 # rf1 with balanced data set has an accuracy of 0.72 and predicts 23/46 yes/yes
 
 
-#rf_pred <- predict(train_rf, train_set)
-#mean(rf_pred==train_set$y)
-
-
-#rf_pred <- predict(train_rf, train_set)
-#mean(rf_pred==train_set$y)
-#not as good as glm
-#confusionMatrix(rf_pred, train_set$y)$overall[["Accuracy"]]
-
-#Let's try rf with all values
-#train_rf <- train(y ~., method="rf", data = train_set)
-#rf_pred <- predict(train_rf, train_set)
-#mean(rf_pred==train_set$y)
 
 # use cross validation to choose parameter
 # Define a range of values for ntree to tune over
 
-mtry= seq(1,7)
-train_rpart_rf <- train(y ~ .,
-                    method = "rf",
-                    #ntree= 100,
-                    tuneGrid = data.frame(mtry= seq(1,7)),
-                    data = train_set)
-train_rpart_rf
-train_rpart_rf$bestTune
-
-ntree_values <- c(50, 100, 150, 200)
-
-train_rpart_rf <- train(y ~ .,
-                        method = "rf",
-                        ntree= ntree_value,
-                        tuneGrid = data.frame(mtry= train_rpart_rf$bestTune),
-                        data = train_set)
-
-
-##nouveau code
-library(caret) 
-library(mlbench)
-
-set.seed(1234)
+set.seed(123)
 #validation croisee avec 5 traine et test
 cv_folds <- createFolds(train_set$y, k = 5, returnTrain = TRUE)
 cv_folds
 
-#grille du rf
-tuneGrid <- expand.grid(.mtry = c(1 : 10))
-tuneGrid
-#essayer cv=5 et cv=10
-#controle qui fait la cross validation
-ctrl <- trainControl(method = "cv",
-                     number = 5,
-                     search = 'grid',
-                     classProbs = TRUE,
-                     savePredictions = "final",
-                     index = cv_folds,
-                     summaryFunction = twoClassSummary) 
-ctrl
-#in most cases a better summary for two class problems 
+#Fine Tuning Rf parameters
+#10 folds repeat 3 times
+control <- trainControl(method='repeatedcv', 
+                        number=10, 
+                        repeats=10)
+#Metric compare model is Accuracy
+metric <- "Accuracy"
+set.seed(123)
 
-ntrees <- c(50, 100, 150)
-ntrees
-nodesize <- c(1, 5)
-nodesize
+mtry.val.all      = c(1,5) #1:7
+num.trees.val.all = c(50,250) #c(50,100,150,200,250)
+nb.models         = length(mtry.val.all)*length(num.trees.val.all)
 
-#add mtry
-mtry <- expand.grid(ntrees = ntrees,
-                      nodesize = nodesize)
-mtry
-#create variable which will give us the max mtry
-max_mtry <- vector("list", nrow(mtry))
-for(i in 1:nrow(max_mtry)){
-  nodesize <- max_mtry[i,2]
-  ntree <- max_mtry[i,1]
-  set.seed(65)
-  rf_model <- train(y~.,
-                    data = train_set,
-                    method = "rf",
-                    importance=TRUE,
-                    metric = "ROC",
-                    tuneGrid = tuneGrid,
-                    trControl = ctrl,
-                    ntree = ntree,
-                    nodesize = nodesize)
-  max_mtry[[i]] <- rf_model
-  #calcule le temps
-  cat("i=",i,"/",nrow(max_mtry),"\n")
-  #print(rf_model)
+AUC.all = matrix(0,nrow = nb.models, ncol=3)
+colnames(AUC.all) <- c("mtry","num.trees","auc")
+
+
+m= 0
+for (mtry.val in mtry.val.all) {
+  for (num.trees.val in num.trees.val.all) {
+    m = m+1
+    cat("running random forest with mlty =",mtry.val,
+        "  num.trees=",num.trees.val,"\n")
+    tune.grid <- expand.grid(mtry=c(mtry.val))
+    train_rf_try <- train(y~., 
+                          data=train_balanced, 
+                          method='rf', 
+                          metric='Accuracy', 
+                          tunegrid=tune.grid, 
+                          #num.trees = num.trees.val,
+                          ntree = num.trees.val,
+                          trControl=control)
+    rf_try = functionerror(train_rf_try,train_balanced,test_set,
+                           ifcat = FALSE)
+    roc.out <- roc( as.integer(test_set$y=="yes"), 
+                    as.integer(as.character(rf_try$glm_pred_test)=="yes"))
+    auc.out = auc(roc.out)
+    cat("mlty =",mtry.val,"  num.trees =",num.trees.val,
+        "  ", "AUC =",as.numeric(auc.out),"\n")
+    #cat("--------------------n")
+    cat("\n")
+    
+    AUC.all[m,] = c(mtry.val,num.trees.val,as.numeric(auc.out))
+  }
 }
 
-names(max_mtry) <- paste("ntrees:", max_mtry$ntrees,
-                              "nodesize:", max_mtry$nodesize)
 
-results_mtry <- resamples(max_mtry)
 
-summary(results_mtry)
 
