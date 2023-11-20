@@ -13,6 +13,7 @@ library(mlbench)
 library(pROC)
 
 
+
 setwd("C:/Users/vladi/OneDrive/Documents/R/Final_Assessment/Option 2")
 dir()
 
@@ -250,7 +251,8 @@ plot(p)
 #Part 2 - Preparing the sample
 #################
 
-###Create a train and test set making sure the proportion of yes remains the same
+num_seed <- num_seed
+###Create a train and final holdout making sure the proportion of yes remains the same
 dataset <- bank_score
 table(dataset$y)
 
@@ -259,13 +261,13 @@ dataset1 = dataset[dataset$y=="yes",]
 nrow(dataset0)+nrow(dataset1)-nrow(dataset)
 
 #We split data set of no into bank_score_set and final holdout to test the final model
-set.seed(123)
+set.seed(num_seed)
 tt_index0 <- createDataPartition(dataset0$y,times=1,p=0.9,list=FALSE)
 bank_score_set0 <- dataset0[tt_index0, ]
 finalholdout_set0 <- dataset0[-tt_index0, ]
 
 #We split data set of yes into train and test
-set.seed(1234)
+set.seed(num_seed)
 tt_index1 <- createDataPartition(dataset1$y,times=1,p=0.9,list=FALSE)
 bank_score_set1 <- dataset1[tt_index1, ]
 finalholdout_set1 <- dataset1[-tt_index1, ]
@@ -286,13 +288,13 @@ dataset1 = dataset[dataset$y=="yes",]
 nrow(dataset0)+nrow(dataset1)-nrow(dataset)
 
 #We split data set of no into bank_score_set and final holdout to test the final model
-set.seed(123)
+set.seed(num_seed)
 tt_index0 <- createDataPartition(dataset0$y,times=1,p=0.9,list=FALSE)
 train_set0 <- dataset0[tt_index0, ]
 test_set0 <- dataset0[-tt_index0, ]
 
 #We split data set of yes into train and test
-set.seed(123)
+set.seed(num_seed)
 tt_index1 <- createDataPartition(dataset1$y,times=1,p=0.9,list=FALSE)
 train_set1 <- dataset1[tt_index1, ]
 set_set1 <- dataset1[-tt_index1, ]
@@ -313,7 +315,7 @@ nrow(train_set)+nrow(test_set)-nrow(dataset)
 sum(train_set$y == "yes")
 sum(train_set$y == "no")
 
-set.seed(1234)
+set.seed(num_seed)
 bank_score_set_over <- ovun.sample(y~., data = train_set,
                                    method = "under", N = sum(train_set$y=="yes")*2)$data
 table(bank_score_set_over$y)
@@ -341,214 +343,354 @@ train_balanced <- train_balanced[train_balanced$pdays<=250,]
 nrow(train_balanced)
 
 #Function to automatically identify accuracy, error and AUC
-functionerror <- function(train_glm,train_set,test_set) {
+functionerror <- function(train_glm,train_set,test_set, ifcat=TRUE) {
   glm_pred_train <- predict(train_glm, train_set)
   glm_pred_test  <- predict(train_glm, test_set)
+  if (ifcat) {
   cat("______________________________________\n")
-  cat(paste(" ",train_glm$method,"  ", as.character(train_glm$call)[2],sep=""),"\n",
+  cat(paste(" ",train_glm$method,"  ",
+            as.character(train_glm$call)[2],sep=""),"\n",
       paste(train_glm$method,"-> accuracy train = ",sep=""),
       round(mean(glm_pred_train==train_set$y),4),"\n",
       paste(train_glm$method,"-> accuracy test  = ",sep=""),
       round(mean(glm_pred_test==test_set$y),4),"\n")
+  }
   tables2 = cbind(table(glm_pred_train,train_set$y),
                   table(glm_pred_test,test_set$y))
-  cat("--------------------------------------\n")
-  cat(paste(" ",train_glm$method,"-> confusion matrices (train|test)\n",sep=""))
-  print(tables2)
-  cat("______________________________________\n")
+  if (ifcat) {
+    cat("--------------------------------------\n")
+    cat(paste(" ",train_glm$method,"-> confusion matrices
+(train|test)\n",sep=""))
+    print(tables2)
+  }
+  roc.out <- roc( as.integer(test_set$y=="yes"),
+                  as.integer(as.character(glm_pred_test)=="yes"))
+  auc.out = auc(roc.out)
+  if (ifcat) {
+    cat("AUC =",as.numeric(auc.out),"\n")
+    cat("______________________________________\n")
+  }
   return (list(glm_pred_train=glm_pred_train,glm_pred_test=glm_pred_test,
-               train_glm=train_glm,train_set=train_set,test_set=test_set))
+               train_glm=train_glm,train_set=train_set,test_set=test_set,
+               auc.out=auc.out))
 }
 
 #only with variable job -  education -  marital - housing-  loan – month
 train_glm <- train(y ~ job + education + marital + housing + loan + month, method="glm", data = train_set)
 glm1 = functionerror(train_glm,train_set,test_set) 
-# Accuracy 0.8842 - however, yes yes only 2/46
+# AUC 0.5134, Accuracy 0.8768 - however, yes yes only 2/46 identified
 #Test with balanced set
 train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month, method="glm", data = train_balanced)
 glm1_bal = functionerror(train_glm_balanced,train_balanced,test_set) 
-# Accuracy 0.6897 - good yes 23/26 - lower accuracy but better prediction of yes 
+# AUC 0.604 Accuracy 0.6847 - good yes 23/26 - lower accuracy but better prediction of yes 
+# we will work only on the balanced_sample
 
 #test day
-train_glm <- train(y ~ job + education + marital + housing + loan + month+ day, method="glm", data = train_set)
-glm2 = functionerror(train_glm,train_set,test_set) 
+#train_glm <- train(y ~ job + education + marital + housing + loan + month+ day, method="glm", data = train_set)
+#glm2 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.8842 - good yes 2/46
 train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ day, method="glm", data = train_balanced)
 glm2_bal = functionerror(train_glm_balanced,train_set,test_set) 
-# Accuracy decreased 0.6749 but better prediction of yes 24/46
+# AUC decreased, day is not to be kept, we can try it with other method though
 
 #glm_pred <- predict(train_glm, train_set)
 #mean(glm_pred==train_set$y)
 #Accuracy unchanged, it does not matter if we keep day
 
 #test poutcome
-train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome, method="glm", data = train_set)
-glm3 = functionerror(train_glm,train_set,test_set) 
+#train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome, method="glm", data = train_set)
+#glm3 = functionerror(train_glm,train_set,test_set) 
 #Accuracy 0.0.8916 and yesyes 8/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month + poutcome, method="glm", data = train_balanced)
 glm3_bal = functionerror(train_glm_balanced,train_set,test_set) 
-#Accuracy 0.7167 and yesyes 24/46
+#AUC increased 0.6402778: kept
 
 #glm_pred <- predict(train_glm, train_set)
 #mean(glm_pred==train_set$y)
 #Accuracy increases to 0.9062, poutcome to be kept
 
 #test age
-train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age, method="glm", data = train_set)
-glm4 = functionerror(train_glm,train_set,test_set) 
+#train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age, method="glm", data = train_set)
+#glm4 = functionerror(train_glm,train_set,test_set) 
 #Accuracy 0.8916 and yesyes 8/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age, method="glm", data = train_balanced)
 glm4_bal = functionerror(train_glm_balanced,train_set,test_set) 
-#Accuracy 0.7118 and yesyes 23/46
-#Accuracy decreases, and yes yes prediction decreases
+#AUC increases 0.6469807, and yes yes prediction increases
 
 #test campaign
-train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign, method="glm", data = train_set)
-glm5 = functionerror(train_glm,train_set,test_set) 
+#train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign, method="glm", data = train_set)
+#glm5 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.8916 and yesyes 8/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ campaign, method="glm", data = train_balanced)
 glm5_bal = functionerror(train_glm_balanced,train_set,test_set) 
-#Accuracy and yes/yes prediction increse 0.7266 and yesyes 25/46
+#AUC and yes/yes prediction decreases 0.6397947 , campaign not kept 
 
 #test previous
-train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous, method="glm", data = train_set)
-glm6 = functionerror(train_glm,train_set,test_set) 
+#train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age + previous, method="glm", data = train_set)
+#glm6 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.8892 and yesyes 8/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous, method="glm", data = train_balanced)
 glm6_bal = functionerror(train_glm_balanced,train_set,test_set) 
-#Accuracy stable 0.7266 and yes/yes prediction stable 25/46
+#Accuracy increased at 0.6603 and yes/yes prediction increased  at 25/46, will  keep previous
 
 #test default
-train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + default, method="glm", data = train_set)
-glm7 = functionerror(train_glm,train_set,test_set) 
+#train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ default, method="glm", data = train_set)
+#glm7 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.8892  and yesyes 8/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + default, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default, method="glm", data = train_balanced)
 glm7_bal = functionerror(train_glm_balanced,train_set,test_set) 
-#Accuracy stable 0.7241 and yes/yes prediction stable 25/46
+#AUC increased to 0.6617754 
 
 #test balance
-train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + balance, method="glm", data = train_set)
-glm8 = functionerror(train_glm,train_set,test_set) 
+#train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age + balance, method="glm", data = train_set)
+#glm8 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.8892 and yesyes 8/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + balance, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + balance, method="glm", data = train_balanced)
 glm8_bal = functionerror(train_glm_balanced,train_set,test_set) 
-#Accuracy decreases 0.7069 and yes/yes prediction decreases 24/46
-#blance not kept
+#AUC decreases  and yes/yes prediction decreases 
+#balance not kept
 
 #test duration
-train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration, method="glm", data = train_set)
-glm9 = functionerror(train_glm,train_set,test_set) 
+#train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age + balance + duration, method="glm", data = train_set)
+#glm9 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.9039 and yesyes 121
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration, method="glm", data = train_balanced)
 glm9_bal = functionerror(train_glm_balanced,train_set,test_set) 
-#Accuracy increases 0.8054 and yes/yes prediction increases 35/46
+#AUC increases 0.8308575   and yes/yes prediction increases 39/46
 
 #glm_pred <- predict(train_glm, train_set)
 #mean(glm_pred==train_set$y)
 #Accuracy improves, we keep duration
 
 #test pdays
-train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration+pdays, method="glm", data = train_set)
-glm10 = functionerror(train_glm,train_set,test_set) 
+#train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age + duration+pdays, method="glm", data = train_set)
+#glm10 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.917 and yesyes 23/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration+pdays, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + pdays, method="glm", data = train_balanced)
 glm10_bal = functionerror(train_glm_balanced,train_set,test_set) 
-#Accuracy stable 0.8054 but yes/yes prediction decreases 31/46
+#decreases
 
-##glm_9 balance is the best combination of variables
-
-
-#glm_pred <- predict(train_glm, train_set)
-#mean(glm_pred==train_set$y)
-#Accuracy decreases, we do not keep pdays
-##I WOULD NEED TO ADD A CONFUSION MATRIX HERE
+#the best set of variable has been identified as job + education + marital + housing + loan + month+ day+ poutcome+ age + duration with
+#AUC 0.8417271
+#YES/YES 40/46
 
 ######knn
+
+
  
 #Perform knn method without any adjustement
 #given the previous results, we will perform straight with the balanced_sample
-train_knn1_bal <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration, method="knn", data = train_balanced)
+train_knn1_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration, method="knn", data = train_balanced)
 knn1_bal = functionerror(train_knn1_bal,train_set,test_set) 
-#accuracy 0.7241 and accuracy 30/46
+#accuracy 0.7471014 and YES/YES 35/46
+#Check all variable do not do better than pre selection of variables
+train_knn2_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day, method="knn", data = train_balanced)
+knn2_bal = functionerror(train_knn2_bal,train_set,test_set)
+#day decreases AUC
+train_knn3_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+campaign, method="knn", data = train_balanced)
+knn3_bal = functionerror(train_knn3_bal,train_set,test_set)
+#AUC also decreases accuracy
+train_knn4_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+balance, method="knn", data = train_balanced)
+knn4_bal = functionerror(train_knn4_bal,train_set,test_set)
+#balance decreases accuracy
+train_knn5_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+pdays, method="knn", data = train_balanced)
+knn5_bal = functionerror(train_knn5_bal,train_set,test_set)
+#with knn, pdays really increases AUC to 0.7788
+
 
 #Perform knn method with cross validation and identification of best k on balanced sample
 #identification of best tune
-train_knn2_cv_bal <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration,
+# train_knn2_cv_bal <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration,
+#                            method="knn",
+#                            data = train_balanced,
+#                            tuneGrid = data.frame(k=seq(5,50,2)),
+#                            trControl = trainControl(method="repeatedcv", number = 15, repeat = 5))
+#                           #trControl = trainControl(method="cv", number = 10, p =0.9))
+
+
+#job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration 0.7633 31/46
+train_knn_cv_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+pdays,
                            method="knn",
                            data = train_balanced,
-                           tuneGrid = data.frame(k=seq(1,50,2)),
-                           trControl = trainControl(method="cv", number = 10, p =0.9))
-train_knn2_cv_bal$bestTune
-train_knn2_cv_bal$bestTune[1,]
+                           #tuneGrid = data.frame(k=seq(15,50,2)),
+                           tuneGrid = data.frame(k=seq(5,50,2)),
+                           #trControl = trainControl(method="cv", 
+                           #                           number = 15),
+                           trControl = trainControl(method="repeatedcv", 
+                                                    number = 15,
+                                                    repeats = 5),
+                           preProcess = c("center","scale"),
+                           metric="Accuracy")
 
-ggplot(train_knn2_cv_bal)
-knn3_bal = functionerror(train_knn2_cv_bal,train_set,test_set) 
+train_knn_cv_bal$bestTune
+train_knn_cv_bal$bestTune[1,]
+
+ggplot(train_knn_cv_bal)
+knn_bal_CV = functionerror(train_knn_cv_bal,train_set,test_set) 
+#AUC 0.8091184 yy 37/46
 
 ##########rf
 
 
 ##prediction is not as good as prediction for the glm
 # rf1 with unbalanced data set does not predict any yes
-train_rf_bal <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration, method="rf", data = train_balanced)
+# job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration 41/46 AUC 0.8456522 
+#Which variables are good with rf
+set.seed(num_seed)
+train_rf_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration, method="rf", data = train_balanced)
 rf1 = functionerror(train_rf_bal,train_balanced,test_set) 
-# rf1 with balanced data set has an accuracy of 0.72 and predicts 23/46 yes/yes
+# rf1 with balanced data set has an accuracy of 0.8320048  and predicts 41/46 yes/yes
+train_rf_bal_2 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day, method="rf", data = train_balanced)
+rf2 = functionerror(train_rf_bal_2,train_balanced,test_set) 
+#AUC 0.8456522, y/y 4. With rf, day improves accuracy
 
+train_rf_bal_3 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day+ campaign, method="rf", data = train_balanced)
+rf3 = functionerror(train_rf_bal_3,train_balanced,test_set) 
+# AUC 0.8333937, campaign decreases accuracy
 
+train_rf_bal_4 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day+ balance, method="rf", data = train_balanced)
+rf4 = functionerror(train_rf_bal_4,train_balanced,test_set)
+# AUC 0.8292271, balance decreases accuracy
+
+train_rf_bal_5 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day+ pdays, method="rf", data = train_balanced)
+rf5 = functionerror(train_rf_bal_5,train_balanced,test_set)
+#AUC 0.8456522, y/y 41, pdays increases accuracy
 
 # use cross validation to choose parameter
 # Define a range of values for ntree to tune over
 
-set.seed(123)
-#validation croisee avec 5 traine et test
-cv_folds <- createFolds(train_set$y, k = 5, returnTrain = TRUE)
-cv_folds
+# set.seed(num_seed)
+# #validation croisee avec 5 traine et test
+# cv_folds <- createFolds(train_set$y, k = 5, returnTrain = TRUE)
+# cv_folds
 
-#Fine Tuning Rf parameters
+######### BETTER TUNING RF #########
+
+#### https://stats.stackexchange.com/questions/348245/do-we-have-to-tune-the-number-of-trees-in-a-random-forest
+#### https://rpubs.com/phamdinhkhanh/389752
+#### https://machinelearningmastery.com/tune-machine-learning-algorithms-in-r/
+#### https://www.jmlr.org/papers/volume18/17-269/17-269.pdf
+
 #10 folds repeat 3 times
-control <- trainControl(method='repeatedcv', 
-                        number=10, 
+control <- trainControl(method='repeatedcv',
+                        number=10,
                         repeats=10)
 #Metric compare model is Accuracy
 metric <- "Accuracy"
-set.seed(123)
+set.seed(num_seed)
 
-mtry.val.all      = c(1,5) #1:7
-num.trees.val.all = c(50,250) #c(50,100,150,200,250)
-nb.models         = length(mtry.val.all)*length(num.trees.val.all)
+nodesize.val.all  = c(1:5) 
+mtry.val.all      = c(1:7) #1:7
+num.trees.val.all = c(50,100,150,200,250)#c(50,250)
+nb.models         = length(mtry.val.all)*
+  length(num.trees.val.all)*
+  length(nodesize.val.all)
 
-AUC.all = matrix(0,nrow = nb.models, ncol=3)
-colnames(AUC.all) <- c("mtry","num.trees","auc")
+AUC.all = matrix(0,nrow = nb.models, ncol=4)
+colnames(AUC.all) <- c("mtry","num.trees","nodesize","auc")
 
+
+
+#list_vars = c("job" + "education" + "marital" + "housing" + "loan" + "month"+ "poutcome"+ "age"+ "previous" + "default" + "duration" + "day"+ "pdays")
+#job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day+ pdays
+#variables   <- paste(list_vars, collapse=" + ")
+#formula.cl <- as.formula(paste("y", " ~ ", variables,sep = ""))
+
+model_all= list()
 
 m= 0
-for (mtry.val in mtry.val.all) {
-  for (num.trees.val in num.trees.val.all) {
-    m = m+1
-    cat("running random forest with mlty =",mtry.val,
-        "  num.trees=",num.trees.val,"\n")
-    tune.grid <- expand.grid(mtry=c(mtry.val))
-    train_rf_try <- train(y~., 
-                          data=train_balanced, 
-                          method='rf', 
-                          metric='Accuracy', 
-                          tunegrid=tune.grid, 
-                          #num.trees = num.trees.val,
-                          ntree = num.trees.val,
-                          trControl=control)
-    rf_try = functionerror(train_rf_try,train_balanced,test_set,
-                           ifcat = FALSE)
-    roc.out <- roc( as.integer(test_set$y=="yes"), 
-                    as.integer(as.character(rf_try$glm_pred_test)=="yes"))
-    auc.out = auc(roc.out)
-    cat("mlty =",mtry.val,"  num.trees =",num.trees.val,
-        "  ", "AUC =",as.numeric(auc.out),"\n")
-    #cat("--------------------n")
-    cat("\n")
-    
-    AUC.all[m,] = c(mtry.val,num.trees.val,as.numeric(auc.out))
+
+for (nodesize.val in nodesize.val.all) {
+  for (mtry.val in mtry.val.all) {
+    for (num.trees.val in num.trees.val.all) {
+      m = m+1
+      cat("m=",m,"/",nb.models,"\n")
+      cat("running random forest with mlty =",mtry.val,
+          "  num.trees=",num.trees.val,"nodesize.val =", nodesize.val,"\n")
+      tune.grid <- expand.grid(mtry=c(mtry.val))
+      train_rf_try <- train(y~job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day+ pdays,
+                            data=train_balanced,#[,c(list_vars,"y")],
+                            method='rf',
+                            metric='Accuracy',
+                            tunegrid=tune.grid,
+                            #num.trees = num.trees.val,
+                            ntree = num.trees.val,
+                            nodesize = nodesize.val,
+                            trControl=control)
+      model_all[[m]]=train_rf_try
+      rf_try = functionerror(train_rf_try,train_balanced,test_set,
+                             ifcat = TRUE)
+      roc.out <- roc( as.integer(test_set$y=="yes"),
+                      as.integer(as.character(rf_try$glm_pred_test)=="yes"))
+      auc.out = auc(roc.out)
+      cat("mlty =",mtry.val,"  num.trees =",num.trees.val,
+          "nodesize.val =", nodesize.val,
+          "  ", "AUC =",as.numeric(auc.out),"\n")
+      #cat("--------------------n")
+      cat("\n")
+      
+      AUC.all[m,] = c(mtry.val,num.trees.val,nodesize.val,as.numeric(auc.out))
+      
+    }
   }
 }
+model_best_rf <- model_all[[164]]
+model_best_rf
+# for (nodesize.val in nodesize.val.all) {
+#   for (mtry.val in mtry.val.all) {
+#     for (num.trees.val in num.trees.val.all) {
+#       m = m+1
+#       cat("running random forest with mlty =",mtry.val,
+#           "  num.trees=",num.trees.val,"nodesize.val =", nodesize.val,"\n")
+#       tune.grid <- expand.grid(mtry=c(mtry.val))
+#       train_rf_try <- train(y~.,
+#                             data=train_balanced,
+#                             method='rf',
+#                             metric='Accuracy',
+#                             tunegrid=tune.grid,
+#                             #num.trees = num.trees.val,
+#                             ntree = num.trees.val,
+#                             nodesize = nodesize.val,
+#                             trControl=control)
+#       rf_try = functionerror(train_rf_try,train_balanced,test_set,
+#                              ifcat = TRUE)
+#       roc.out <- roc( as.integer(test_set$y=="yes"),
+#                       as.integer(as.character(rf_try$glm_pred_test)=="yes"))
+#       auc.out = auc(roc.out)
+#       cat("mlty =",mtry.val,"  num.trees =",num.trees.val,
+#           "nodesize.val =", nodesize.val,
+#           "  ", "AUC =",as.numeric(auc.out),"\n")
+#       #cat("--------------------n")
+#       cat("\n")
+#       
+#       AUC.all[m,] = c(mtry.val,num.trees.val,nodesize.val,as.numeric(auc.out))
+#       
+#     }
+#   }
+# }
+
+####Final holdout
+#running random forest with mlty = 5   num.trees= 250 nodesize.val = 1 
+set.seed(num_seed)
+# #train_rf_best <- train(y~.,
+#                       data=train_balanced[,c(list_vars,"y")],
+#                       method='rf',
+#                       metric='Accuracy',
+#                       mlty= 5,
+#                       ntree = 250,
+#                       nodesize = 1,
+#                       trControl=control)
+rf_best = functionerror(model_best_rf,train_balanced,test_set, ifcat = TRUE)
+# AUC = 0.8467995 
+
+#what is the score on the holdout
+rf_best_holdout = functionerror(model_best_rf,train_balanced,final_holdout_set, ifcat = TRUE)
+#AUC = 0.7854808 
 
 
-
-
+# Get best model
+# rename model by train
+# cherche la meilleure valeur
+# commence le rapport
+# rajouter les parametres pour le tuning pour la cross validation
+# Graph comme le knn
