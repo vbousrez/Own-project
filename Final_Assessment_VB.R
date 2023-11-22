@@ -56,8 +56,11 @@ sum(is.na(bank_score$y))
 
 #Let us check how many unique value per variable
 for (j in 1:ncol(bank_score)) {
-  cat(names(bank_score)[j], "\t", length(unique(bank_score[,j])),"\n")
-}
+  #cat(names(bank_score)[j], "\t", length(unique(bank_score[,j])),"\n")
+  cat(format(names(bank_score)[j],
+         width = 10,
+         justify = "left"), length(unique(bank_score[,j])),"\n")
+  }
 
 ###############DATA VISUALIZATION
 ###############DISCRETE VARIABLE
@@ -251,7 +254,7 @@ plot(p)
 #Part 2 - Preparing the sample
 #################
 
-num_seed <- num_seed
+num_seed <- 321
 ###Create a train and final holdout making sure the proportion of yes remains the same
 dataset <- bank_score
 table(dataset$y)
@@ -539,18 +542,18 @@ knn_bal_CV = functionerror(train_knn_cv_bal,train_set,test_set)
 set.seed(num_seed)
 train_rf_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration, method="rf", data = train_balanced)
 rf1 = functionerror(train_rf_bal,train_balanced,test_set) 
-# rf1 with balanced data set has an accuracy of 0.8320048  and predicts 41/46 yes/yes
+# rf1 with balanced data set has an AUC of 0.8155797  and predicts 39/46 yes/yes
 train_rf_bal_2 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day, method="rf", data = train_balanced)
 rf2 = functionerror(train_rf_bal_2,train_balanced,test_set) 
-#AUC 0.8456522, y/y 4. With rf, day improves accuracy
+#AUC 0.8428744 , y/y 4. With rf, day improves AUC
 
 train_rf_bal_3 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day+ campaign, method="rf", data = train_balanced)
 rf3 = functionerror(train_rf_bal_3,train_balanced,test_set) 
-# AUC 0.8333937, campaign decreases accuracy
+# AUC 0.8320048  , campaign decreases AUC
 
 train_rf_bal_4 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day+ balance, method="rf", data = train_balanced)
 rf4 = functionerror(train_rf_bal_4,train_balanced,test_set)
-# AUC 0.8292271, balance decreases accuracy
+# AUC 0.8169686 , balance decreases AUC
 
 train_rf_bal_5 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day+ pdays, method="rf", data = train_balanced)
 rf5 = functionerror(train_rf_bal_5,train_balanced,test_set)
@@ -581,15 +584,13 @@ set.seed(num_seed)
 
 nodesize.val.all  = c(1:5) 
 mtry.val.all      = c(1:7) #1:7
-num.trees.val.all = c(50,100,150,200,250)#c(50,250)
+num.trees.val.all = c(50,100,150,200,250)#c(50,100,150,200,250)
 nb.models         = length(mtry.val.all)*
   length(num.trees.val.all)*
   length(nodesize.val.all)
 
 AUC.all = matrix(0,nrow = nb.models, ncol=4)
 colnames(AUC.all) <- c("mtry","num.trees","nodesize","auc")
-
-
 
 #list_vars = c("job" + "education" + "marital" + "housing" + "loan" + "month"+ "poutcome"+ "age"+ "previous" + "default" + "duration" + "day"+ "pdays")
 #job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day+ pdays
@@ -599,6 +600,7 @@ colnames(AUC.all) <- c("mtry","num.trees","nodesize","auc")
 model_all= list()
 
 m= 0
+sink("rf_boucle_ouput.txt")
 
 for (nodesize.val in nodesize.val.all) {
   for (mtry.val in mtry.val.all) {
@@ -634,7 +636,11 @@ for (nodesize.val in nodesize.val.all) {
     }
   }
 }
-model_best_rf <- model_all[[164]]
+
+#close
+sink()
+#from the file analysis, the best model is 117
+model_best_rf <- model_all[[117]]
 model_best_rf
 # for (nodesize.val in nodesize.val.all) {
 #   for (mtry.val in mtry.val.all) {
@@ -681,11 +687,11 @@ set.seed(num_seed)
 #                       nodesize = 1,
 #                       trControl=control)
 rf_best = functionerror(model_best_rf,train_balanced,test_set, ifcat = TRUE)
-# AUC = 0.8467995 
+# AUC = 0.8579106  
 
 #what is the score on the holdout
 rf_best_holdout = functionerror(model_best_rf,train_balanced,final_holdout_set, ifcat = TRUE)
-#AUC = 0.7854808 
+#AUC = 0.7804808  
 
 
 # Get best model
