@@ -14,7 +14,7 @@ library(pROC)
 
 
 
-setwd("C:/Users/vladi/OneDrive/Documents/R/Final_Assessment/Option 2")
+setwd("C:/Users/vladi/OneDrive/Documents/R/Own-project")
 dir()
 
 bank_score = read.csv("bank.csv", sep=';')
@@ -27,10 +27,10 @@ str(bank_score)
 summary(bank_score)
 
 #Empty columns: do we have any column with empty cell?
-Empty <- for (j in 1:ncol(bank_score)) {
-  sum(is.na(bank_score)[j])
-}
-Empty
+#Empty <- for (j in 1:ncol(bank_score)) {
+#  sum(is.na(bank_score)[j])
+#}
+#Empty
 #No cell empty
 
 #verification line by line
@@ -379,11 +379,16 @@ functionerror <- function(train_glm,train_set,test_set, ifcat=TRUE) {
 }
 
 #only with variable job -  education -  marital - housing-  loan – month
-train_glm <- train(y ~ job + education + marital + housing + loan + month, method="glm", data = train_set)
+train_glm <- train(y ~ job + education + marital + housing + loan + month, method="glm", 
+                   data = train_set,
+                   preProcess = c("center","scale"))
 glm1 = functionerror(train_glm,train_set,test_set) 
 # AUC 0.5134, Accuracy 0.8768 - however, yes yes only 2/46 identified
 #Test with balanced set
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month,
+                            method="glm",
+                            data = train_balanced,
+                            preProcess = c("center","scale"))
 glm1_bal = functionerror(train_glm_balanced,train_balanced,test_set) 
 # AUC 0.604 Accuracy 0.6847 - good yes 23/26 - lower accuracy but better prediction of yes 
 # we will work only on the balanced_sample
@@ -392,7 +397,10 @@ glm1_bal = functionerror(train_glm_balanced,train_balanced,test_set)
 #train_glm <- train(y ~ job + education + marital + housing + loan + month+ day, method="glm", data = train_set)
 #glm2 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.8842 - good yes 2/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ day, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ day,
+                            method="glm",
+                            data = train_balanced,
+                            preProcess = c("center","scale"))
 glm2_bal = functionerror(train_glm_balanced,train_set,test_set) 
 # AUC decreased, day is not to be kept, we can try it with other method though
 
@@ -404,7 +412,10 @@ glm2_bal = functionerror(train_glm_balanced,train_set,test_set)
 #train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome, method="glm", data = train_set)
 #glm3 = functionerror(train_glm,train_set,test_set) 
 #Accuracy 0.0.8916 and yesyes 8/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month + poutcome, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month + poutcome, 
+                            method="glm", 
+                            data = train_balanced,
+                            preProcess = c("center","scale"))
 glm3_bal = functionerror(train_glm_balanced,train_set,test_set) 
 #AUC increased 0.6402778: kept
 
@@ -416,7 +427,10 @@ glm3_bal = functionerror(train_glm_balanced,train_set,test_set)
 #train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age, method="glm", data = train_set)
 #glm4 = functionerror(train_glm,train_set,test_set) 
 #Accuracy 0.8916 and yesyes 8/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age,
+                            method="glm",
+                            data = train_balanced,
+                            preProcess = c("center","scale"))
 glm4_bal = functionerror(train_glm_balanced,train_set,test_set) 
 #AUC increases 0.6469807, and yes yes prediction increases
 
@@ -424,7 +438,10 @@ glm4_bal = functionerror(train_glm_balanced,train_set,test_set)
 #train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign, method="glm", data = train_set)
 #glm5 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.8916 and yesyes 8/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ campaign, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ campaign, 
+                            method="glm",
+                            data = train_balanced,
+                            preProcess = c("center","scale"))
 glm5_bal = functionerror(train_glm_balanced,train_set,test_set) 
 #AUC and yes/yes prediction decreases 0.6397947 , campaign not kept 
 
@@ -432,15 +449,21 @@ glm5_bal = functionerror(train_glm_balanced,train_set,test_set)
 #train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age + previous, method="glm", data = train_set)
 #glm6 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.8892 and yesyes 8/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous, 
+                            method="glm",
+                            data = train_balanced,
+                            preProcess = c("center","scale"))
 glm6_bal = functionerror(train_glm_balanced,train_set,test_set) 
-#Accuracy increased at 0.6603 and yes/yes prediction increased  at 25/46, will  keep previous
+#Accuracy increased at 0.6603 and yes/yes prediction increased  at 26/46, will  keep previous
 
 #test default
 #train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ default, method="glm", data = train_set)
 #glm7 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.8892  and yesyes 8/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default,
+                            method="glm",
+                            data = train_balanced,
+                            preProcess = c("center","scale"))
 glm7_bal = functionerror(train_glm_balanced,train_set,test_set) 
 #AUC increased to 0.6617754 
 
@@ -448,8 +471,12 @@ glm7_bal = functionerror(train_glm_balanced,train_set,test_set)
 #train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age + balance, method="glm", data = train_set)
 #glm8 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.8892 and yesyes 8/46
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + balance, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + balance,
+                            method="glm",
+                            data = train_balanced,
+                            preProcess = c("center","scale"))
 glm8_bal = functionerror(train_glm_balanced,train_set,test_set) 
+
 #AUC decreases  and yes/yes prediction decreases 
 #balance not kept
 
@@ -457,8 +484,15 @@ glm8_bal = functionerror(train_glm_balanced,train_set,test_set)
 #train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age + balance + duration, method="glm", data = train_set)
 #glm9 = functionerror(train_glm,train_set,test_set) 
 # Accuracy 0.9039 and yesyes 121
-train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration, method="glm", data = train_balanced)
+train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration, 
+                            method="glm", 
+                            data = train_balanced,
+                            preProcess = c("center","scale"))
 glm9_bal = functionerror(train_glm_balanced,train_set,test_set) 
+print(summary(train_glm_balanced$finalModel))
+
+#summary(train_glm_balanced$finalModel)$adj.r.squared
+
 #AUC increases 0.8308575   and yes/yes prediction increases 39/46
 
 #glm_pred <- predict(train_glm, train_set)
@@ -694,9 +728,9 @@ rf_best_holdout = functionerror(model_best_rf,train_balanced,final_holdout_set, 
 #AUC = 0.7804808  
 
 
-# Get best model
-# rename model by train
-# cherche la meilleure valeur
-# commence le rapport
-# rajouter les parametres pour le tuning pour la cross validation
-# Graph comme le knn
+# inserer un peu de code: function d'erreur, boucle, les graphs, les AUC (pas pour la boucle) 
+#pdf graphs http://www.sthda.com/english/wiki/creating-and-saving-graphs-r-base-graphs
+#```{r 'setup', echo = FALSE, cache = TRUE}
+#https://bookdown.org/yihui/rmarkdown/
+#https://rmarkdown.rstudio.com/lesson-3.html check option for captions 
+#garder les betas
