@@ -1,0 +1,428 @@
+---
+title: "EdX_Final_Assessment_OwnProject"
+author: "Vladimir Bousrez"
+date: "2023-11-24"
+output: 
+pdf_document:default
+htlm_document: default
+---
+
+# Own Project Bank Score
+
+# Part 1 - Introduction
+In this project, we create a loan recommendation system leveraging on a dataset where we predict the y event.
+We will apply a machine learning algorithm to the training set of the bank_score data set and test it on a final hold-out set. The final hold-out test should not be used for training or selection of the algorithm, it should only be used at the end of the project on the final model. Instead, the 90% of data available for training from bank_score, called bank_score, should be split further into train and test.
+The criteria to assess the success of the algorithm is the Area Under the Curve (AUC) and the true positive on the test set. AUC measures how the model performs is distinguising the true and false positive.
+In order to proceed, we will:
+
+* Prepare the work environment:
+    + Download and load the libraries.
+    + Download, unzip and consolidate the bank_score dataset.
+    + Dedicate 10% of the “bank_score” file to final testing in the final_holdout_test. The remaining 90% goes to “bank_score”.
+
+* Split “bank_score” between test and train.
+
+*	Analyse the data set.
+
+* Calculate the AUC for four models.
+    + glm on several variables
+    + knn on several variables
+    + rf on several variables
+    + rf on selected variables with loop to optimize parameters.
+    
+* Calculation of AUC on the final model
+
+
+# Part 2 – Methods/analysis
+
+## Data preparation
+The files have been downloaded on the computer and saved under "C:/Users/vladi/OneDrive/Documents/R/Own-project" 
+
+# load the dataset
+```{r 'setup', echo = FALSE, cache = TRUE}
+library(tidyverse)
+library(dslabs)
+library(ggplot2)
+library(caret)
+library(reshape2)
+library(gridExtra)
+library(ROSE)
+library(randomForest)
+library(caret)
+library(e1071)
+library(mlbench)
+library(pROC)
+
+
+
+setwd("C:/Users/vladi/OneDrive/Documents/R/Own-project")
+dir()
+
+bank_score = read.csv("bank.csv", sep=';')
+head(bank_score)
+```
+## Data vizualisation
+The completeness of the data set will be assessed here, to estimate the need for data cleaning. Then, each variable will be visually viewed to assess opportunities of adjustements and if we should keep them or not in the final model.
+We start with analysing the structure of the data
+
+```{r 'setup', echo = FALSE, cache = TRUE}
+str(bank_score)
+summary(bank_score)
+```
+We can now see the format of each variable, and what its content looks like.
+We also get the overview of the minimum and maximum value for each variable and a first understanding of which variable might need an adjustement.
+```{r}
+sum(is.na(bank_score$age))
+sum(is.na(bank_score$job))
+sum(is.na(bank_score$marital))
+sum(is.na(bank_score$education))
+sum(is.na(bank_score$default))
+sum(is.na(bank_score$balance))
+sum(is.na(bank_score$housing))
+sum(is.na(bank_score$loan))
+sum(is.na(bank_score$contact))
+sum(is.na(bank_score$day))
+sum(is.na(bank_score$month))
+sum(is.na(bank_score$duration))
+sum(is.na(bank_score$campaign))
+sum(is.na(bank_score$pdays))
+sum(is.na(bank_score$previous))
+sum(is.na(bank_score$poutcome))
+sum(is.na(bank_score$y))
+#no empty cell 
+
+```
+We see that there is no empty cell in the dataset.
+
+We will also look at the unique value per variable
+
+```{r 'setup', echo = FALSE, cache = TRUE}
+
+#Let us check how many unique value per variable
+
+for (j in 1:ncol(bank_score)) {
+  #cat(names(bank_score)[j], "\t", length(unique(bank_score[,j])),"\n")
+  cat(format(names(bank_score)[j],
+         width = 10,
+         justify = "left"), length(unique(bank_score[,j])),"\n")
+  }
+```
+We can see that job, marital, educaiton, defaul, housing, loan, contact, month, poutcome and y are categorical while age, balance, day, duration, campaign, pdays, previous are more continous.
+
+### Variable vizualisation - categorical
+We first establish a function which we will use to create a graph on each categorical variable.
+####Function
+```{r 'setup', echo = FALSE, cache = TRUE}
+twograph <- function(namevar,labelvar,xfactors=NULL) {
+  data_score=bank_score[,c(namevar,"y")]
+  names(data_score) <- c("x","y")
+#factor important for order of graphs  
+  if (!is.null(xfactors)) {
+    data_score$x =
+      factor(data_score$x,levels=xfactors)
+  }
+  Graph1 <- data_score %>%
+    group_by(x) %>%
+    summarize(avg = mean(y == "yes")) %>%
+    ggplot(aes(x = x, y = avg)) +
+    geom_bar(stat = "identity", fill = "blue") +
+    labs(
+      title = paste("Frequency of y=yes by ",
+                    labelvar,sep = ""),
+      #x = libvar,
+      x = " ",
+      y = "Percent (%)"
+      #y = "Average 'Yes' Responses"
+    ) +
+    #theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+    theme(axis.text.x = element_text(angle = 90))+
+    theme(axis.text.x = element_text(size = rel(0.8)))
+ 
+  m = table(data_score$x, data_score$y)
+  n = round(100*prop.table(m,2),2)
+  
+  no <- n[,1]
+  yes <- n[,2]
+  md <- row.names(n)
+  
+  df1 <- data.frame(no, yes, md)
+  df2 <- melt(df1, id.vars='md')
+  #print(df2)
+  
+  if (!is.null(xfactors)) {
+    df2$md = factor(df2$md,levels=xfactors)
+  }
+  
+  Graph2 <-ggplot(df2, aes(x=md, y=value, fill=variable)) +
+    ggtitle(paste("Frequency of y by ", labelvar,sep = ""))+
+    geom_bar(stat='identity', position='dodge') +
+    #labs(y= "Percent of y", x = "Job type")+
+    labs(y= "Percent (%)", x = " ")+
+    labs(fill = " ") +
+    scale_fill_manual(values=c("#CDC8B1","#9FB6CD"))+
+    theme(axis.text.x = element_text(angle = 90))+
+    theme(axis.text.x = element_text(size = rel(0.8)))
+
+    plot(Graph1)
+    plot(Graph2)
+    cat("variable=",labelvar,"\n")
+    print(t(n))
+    grid.arrange(Graph1, Graph2, ncol = 2)
+    
+  # get in a list all the variables of the function
+  return (list(graph1=Graph1,graph2=Graph2,
+               m=m,n=n,yes=yes,no=no,md=md,
+               df1=df1,df2=df2,namevar=namevar,
+               labelvar=labelvar))
+  
+}
+```
+
+#### job
+```{r}
+g1g2 = twograph("job","Job")
+#Visual difference between yes and no: variable to keep
+```
+We can see strong difference in the distribution of yes and no for each position, we will definitely keep those variables in the algorithm.
+
+#### marital
+```{r 'setup', echo = FALSE, cache = TRUE}
+# check marital
+g1g2 = twograph("marital","Marital")
+#Visual difference between yes and no: variable to keep
+```
+We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
+
+#### education
+```{r 'setup', echo = FALSE, cache = TRUE}
+# check education
+g1g2 = twograph("education","Education")
+#Visual difference between yes and no: variable to keep
+```
+We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
+
+
+#### default
+```{r 'setup', echo = FALSE, cache = TRUE}
+# check default
+g1g2 = twograph("default","Default")
+#the variable does not seem to have an impact, it will be tested further
+```
+The trend is not clear visually, we will need to test the variable further
+
+#### housing
+```{r 'setup', echo = FALSE, cache = TRUE}
+# check housing
+g1g2 = twograph("housing","Housing")
+#Visual difference between yes and no: variable to keep
+```
+We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
+
+#### loan
+```{r 'setup', echo = FALSE, cache = TRUE}
+# check loan
+g1g2 = twograph("loan","Loan")
+#Visual difference between yes and no: variable to keep
+```
+We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
+
+#### month
+```{r 'setup', echo = FALSE, cache = TRUE}
+#check month
+g1g2 = twograph("month","Month",
+                c("jan","feb","mar","apr","may",
+                  "jun", "jul", "aug", "sep","oct",
+                  "nov", "dec"))
+#Visual difference between yes and no: variable to keep
+```
+We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
+
+#### poutcome
+```{r 'setup', echo = FALSE, cache = TRUE}
+# check poutcome
+g1g2 = twograph("poutcome","Poutcome")
+#Visual difference between yes and no, however, interpretation is uncertain: variable to test
+```
+We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
+
+#### day
+```{r 'setup', echo = FALSE, cache = TRUE}
+#check day
+g1g2 = twograph("day","Day",
+                as.character(seq(1:31)))
+#Visual difference between yes and no, however, interpretation can be difficult because of granular data: variable to test
+```
+We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
+
+#### age
+```{r 'setup', echo = FALSE, cache = TRUE}
+# check age
+g1g2 = twograph("age","Age",
+                as.character(seq(min(bank_score$age),
+                                 max(bank_score$age),
+                                 by=1)))
+#Visual difference between yes and no, however, interpretation can be difficult because of granular data: variable to test
+```
+We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
+
+#### campaign
+```{r 'setup', echo = FALSE, cache = TRUE}
+# Check campaign
+g1g2 = twograph("campaign","Campaign",
+                as.character(seq(min(bank_score$campaign),
+                                 max(bank_score$campaign),
+                                 by=1)))
+#Visual difference between yes and no, however, interpretation uncertain because of granular data: variable to test
+```
+We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
+
+#### previous
+```{r 'setup', echo = FALSE, cache = TRUE}
+# check previous
+g1g2 = twograph("previous","Previous",
+                as.character(seq(min(bank_score$previous),
+                                 max(bank_score$previous),
+                                 by=1)))
+#Visual difference between yes and no, however, interpretation uncertain because of granular data: variable to test
+
+```
+We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
+
+### Variable vizualisation - continuous
+
+####Function
+We elaborate a function for easier production of the graphs on continuous variable
+```{r 'setup', echo = FALSE, cache = TRUE}
+########## continuous variables : boxplot ###
+
+onegraph_boxp <- function (namevar,labelvar, bank_score_) {
+  data_score=bank_score_[,c(namevar,"y")]
+  names(data_score) <- c("x","y")
+  data_score$y <- factor(data_score$y,
+                         levels=c("yes","no"))
+  bp <- ggplot(data_score, aes(y, x))
+  bp <- bp + geom_boxplot(fill = "#FFFFFF", color = "#FFFFFF")
+  bp <- bp + geom_boxplot(aes(fill = y))
+  bp <- bp + scale_fill_manual(values = c("#CDC8B1","#9FB6CD"))
+  bp <- bp +labs(
+    title = "Boxplots",
+    x = " ",
+    y = labelvar
+  )
+  bp <- bp + theme(legend.position = "right")
+  # bp
+  
+  return (bp)
+}
+
+p <- onegraph_boxp("balance","Balance",bank_score)
+plot(p)
+```
+
+#### Balance
+```{r 'setup', echo = FALSE, cache = TRUE}
+p <- onegraph_boxp("balance","Balance",bank_score)
+plot(p)
+##We see we could consider excluding amounts beyond ZMW 10,000
+```
+We should consider removing outliers
+
+```{r 'setup', echo = FALSE, cache = TRUE}  
+p <- onegraph_boxp("balance","Balance",bank_score[bank_score$balance<=10000,])
+plot(p)
+#seems to be a difference: variable to test taking about outliers above 20,000
+```
+This variable should be tested further in the algorithms.
+
+####Age
+```{r 'setup', echo = FALSE, cache = TRUE}
+#Age
+p <- onegraph_boxp("age","Age",bank_score)
+plot(p)
+# seems to be a slight difference, variable to test
+```
+This variable should be tested further in the algorithms without outliers.
+
+####Duration
+```{r 'setup', echo = FALSE, cache = TRUE}
+# check duration
+p <- onegraph_boxp("duration","Duration", bank_score)
+plot(p)
+#We can remove outliers beyond 1000
+```
+We should consider removing outliers beyond 1,000
+```{r 'setup', echo = FALSE, cache = TRUE}
+
+p <- onegraph_boxp("duration","Duration", bank_score[bank_score$duration<=1000,])
+plot(p)
+# to be tested without outliers
+```
+To be tested in the algorithms without outliers
+
+####pdays
+```{r 'setup', echo = FALSE, cache = TRUE}
+# check pdays
+p <- onegraph_boxp("pdays","Pdays", bank_score)
+plot(p)
+#We can remove outliers beyond 250
+```
+We test removing outliers beyond 250
+```{r 'setup', echo = FALSE, cache = TRUE}
+p <- onegraph_boxp("pdays","Pdays", bank_score[bank_score$pdays<=250,])
+plot(p)
+#to be tested without outliers
+```
+To be tested further in the algorithms without outliers
+
+####previous
+# check previous
+```{r 'setup', echo = FALSE, cache = TRUE}
+p <- onegraph_boxp("previous","Previous", bank_score)
+plot(p)
+#Remove outliers above 10
+```
+We test removing outliers beyond 250
+```{r 'setup', echo = FALSE, cache = TRUE}
+
+p <- onegraph_boxp("previous","Previous", bank_score[bank_score$previous<=10,])
+plot(p)
+```
+Variable to be tested further in the algorithms without outliers beyond 10.
+
+## Sample creation
+The steps to download and load the libraries are provided by the course. The movielens data set will be split between a edX set and a 10% validation set “final holdout set”, which will be used to calculate the RMSE of the final model selected.
+## Training and test the model
+### Glm
+### Knn
+### Rf
+
+# Part 3 – Results
+## Final verification on validation set
+
+# Part 4 – Conclusion
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
