@@ -12,16 +12,16 @@ output:
 
 ## Part 1 - Introduction
 In this project, we create a loan recommendation system leveraging on a dataset where we predict the y event.
-We will apply a machine learning algorithm to the training set of the bank_score data set and test it on a final hold-out set. The final hold-out test should not be used for training or selection of the algorithm, it should only be used at the end of the project on the final model. Instead, the 90% of data available for training from bank_score, called bank_score, should be split further into train and test.
-The criteria to assess the success of the algorithm is the Area Under the Curve (AUC) and the true positive on the test set. AUC measures how the model performs is distinguising the true and false positive.
+We will apply a machine learning algorithm to the training set of the bank_score data set and test it on a final hold-out set. The final hold-out test will not be used for training or selection of the algorithm, it will only be used at the end of the project on the final model. Instead, the 90% of data available for training from bank_score, called bank_score_set, should be split further into train and test.
+The criteria to assess the success of the algorithm is the Area Under the Curve (AUC) and the true positive on the test set. AUC measures how the model performs in distinguising the true and false positive.
 In order to proceed, we will:
 
 * Prepare the work environment:
     + Download and load the libraries.
     + Download, unzip and consolidate the bank_score dataset.
-    + Dedicate 10% of the “bank_score” file to final testing in the final_holdout_test. The remaining 90% goes to “bank_score”.
+    + Dedicate 10% of the “bank_score” file to final testing in the final_holdout_test. The remaining 90% goes to “bank_score_set”.
 
-* Split “bank_score” between test and train.
+* Split “bank_score_set” between test and train.
 
 *	Analyse the data set.
 
@@ -64,7 +64,7 @@ head(bank_score)
 
 ### 2.1 Data vizualisation
 The completeness of the data set will be assessed here, to estimate the need for data cleaning. Then, each variable will be visually viewed to assess opportunities of adjustements and if we should keep them or not in the final model.
-We start with analysing the structure of the data
+We start with analyzing the structure of the data.
 
 #### Structure of the Data
 
@@ -117,11 +117,13 @@ for (j in 1:ncol(bank_score)) {
   }
 ```
 
-We can see that job, marital, educaiton, defaul, housing, loan, contact, month, poutcome and y are categorical while age, balance, day, duration, campaign, pdays, previous are more continous.
+We can see that job, marital, education, default, housing, loan, contact, month, poutcome and y are categorical while age, balance, day, duration, campaign, pdays, previous are more continous.
 
 #### Variable vizualisation - categorical
 We first establish a function which we will use to create a graph on each categorical variable.
+
 ##### Function
+
 ```{r}
 twograph <- function(namevar,labelvar,xfactors=NULL) {
   data_score=bank_score[,c(namevar,"y")]
@@ -193,6 +195,7 @@ twograph <- function(namevar,labelvar,xfactors=NULL) {
 g1g2 = twograph("job","Job")
 #Visual difference between yes and no: variable to keep
 ```
+
 We can see strong difference in the distribution of yes and no for each position, we will definitely keep those variables in the algorithm.
 
 ##### marital
@@ -201,6 +204,7 @@ We can see strong difference in the distribution of yes and no for each position
 g1g2 = twograph("marital","Marital")
 #Visual difference between yes and no: variable to keep
 ```
+
 We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
 
 ##### education
@@ -209,6 +213,7 @@ We can see strong difference in the distribution of yes and no, we will definite
 g1g2 = twograph("education","Education")
 #Visual difference between yes and no: variable to keep
 ```
+
 We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
 
 
@@ -218,6 +223,7 @@ We can see strong difference in the distribution of yes and no, we will definite
 g1g2 = twograph("default","Default")
 #the variable does not seem to have an impact, it will be tested further
 ```
+
 The trend is not clear visually, we will need to test the variable further
 
 ##### housing
@@ -226,6 +232,7 @@ The trend is not clear visually, we will need to test the variable further
 g1g2 = twograph("housing","Housing")
 #Visual difference between yes and no: variable to keep
 ```
+
 We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
 
 ##### loan
@@ -234,6 +241,7 @@ We can see strong difference in the distribution of yes and no, we will definite
 g1g2 = twograph("loan","Loan")
 #Visual difference between yes and no: variable to keep
 ```
+
 We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
 
 ##### month
@@ -245,6 +253,7 @@ g1g2 = twograph("month","Month",
                   "nov", "dec"))
 #Visual difference between yes and no: variable to keep
 ```
+
 We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
 
 ##### poutcome
@@ -253,6 +262,7 @@ We can see strong difference in the distribution of yes and no, we will definite
 g1g2 = twograph("poutcome","Poutcome")
 #Visual difference between yes and no, however, interpretation is uncertain: variable to test
 ```
+
 We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
 
 ##### day
@@ -262,6 +272,7 @@ g1g2 = twograph("day","Day",
                 as.character(seq(1:31)))
 #Visual difference between yes and no, however, interpretation can be difficult because of granular data: variable to test
 ```
+
 We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
 
 ##### age
@@ -273,6 +284,7 @@ g1g2 = twograph("age","Age",
                                  by=1)))
 #Visual difference between yes and no, however, interpretation can be difficult because of granular data: variable to test
 ```
+
 We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
 
 ##### campaign
@@ -284,6 +296,7 @@ g1g2 = twograph("campaign","Campaign",
                                  by=1)))
 #Visual difference between yes and no, however, interpretation uncertain because of granular data: variable to test
 ```
+
 We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
 
 ##### previous
@@ -296,6 +309,7 @@ g1g2 = twograph("previous","Previous",
 #Visual difference between yes and no, however, interpretation uncertain because of granular data: variable to test
 
 ```
+
 We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
 
 
@@ -336,6 +350,7 @@ p <- onegraph_boxp("balance","Balance",bank_score)
 plot(p)
 ##We see we could consider excluding amounts beyond ZMW 10,000
 ```
+
 We should consider removing outliers
 
 ```{r echo = FALSE}
@@ -352,6 +367,7 @@ p <- onegraph_boxp("age","Age",bank_score)
 plot(p)
 # seems to be a slight difference, variable to test
 ```
+
 This variable should be tested further in the algorithms without outliers.
 
 ##### Duration
@@ -361,6 +377,7 @@ p <- onegraph_boxp("duration","Duration", bank_score)
 plot(p)
 #We can remove outliers beyond 1000
 ```
+
 We should consider removing outliers beyond 1,000
 ```{r echo = FALSE}
 
@@ -368,6 +385,7 @@ p <- onegraph_boxp("duration","Duration", bank_score[bank_score$duration<=1000,]
 plot(p)
 # to be tested without outliers
 ```
+
 To be tested in the algorithms without outliers
 
 ##### pdays
@@ -377,12 +395,14 @@ p <- onegraph_boxp("pdays","Pdays", bank_score)
 plot(p)
 #We can remove outliers beyond 250
 ```
+
 We test removing outliers beyond 250
 ```{r echo = FALSE}
 p <- onegraph_boxp("pdays","Pdays", bank_score[bank_score$pdays<=250,])
 plot(p)
 #to be tested without outliers
 ```
+
 To be tested further in the algorithms without outliers
 
 ##### previous
@@ -392,6 +412,7 @@ p <- onegraph_boxp("previous","Previous", bank_score)
 plot(p)
 #Remove outliers above 10
 ```
+
 We test removing outliers beyond 250
 ```{r echo = FALSE}
 
@@ -429,9 +450,9 @@ finalholdout_set1 <- dataset1[-tt_index1, ]
 
 #We link the train set of 0 and 1 into 1, same for the test
 bank_score_set = rbind(bank_score_set0,bank_score_set1)
-head(bank_score_set)
+#head(bank_score_set)
 final_holdout_set= rbind(finalholdout_set0,finalholdout_set1)
-head(final_holdout_set)
+#head(final_holdout_set)
 ```
 Number of row in bank_score_set + finalholdout - number of row in bank_score.
 ```{r echo = FALSE}
@@ -483,7 +504,7 @@ bank_score_set_over <- ovun.sample(y~., data = train_set,
                                    method = "under", N = sum(train_set$y=="yes")*2)$data
 table(bank_score_set_over$y)
 train_balanced = bank_score_set_over
-head(train_balanced)
+#head(train_balanced)
 ```
 
 ### 2.3 – Training and testing the models
@@ -544,7 +565,7 @@ functionerror <- function(train_glm,train_set,test_set, ifcat=TRUE) {
                auc.out=auc.out))
 }
 ```
-#### GLM model
+#### Model 1 - GLM model
 
 ##### variable job -  education -  marital - housing-  loan – month
 We start with the variables which were the most promising from the graphs
@@ -727,7 +748,7 @@ pday decreases AUC and is not kept.
 
 The best set of variable has been identified as job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration
 
-#### knn model
+#### Model 2 - knn model
 We will also proceed with testing knn on the variable visually identified and test additional variable.
 
 ##### test job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration
@@ -810,7 +831,7 @@ knn_bal_CV = functionerror(train_knn_cv_bal,train_set,test_set)
 ######  conclusion knn
 Optimizing variables and parameters helped improve the prediction, however predictive power remains not as good as glm.
 
-#####  random forest (rf)
+#####  Model 3- random forest (rf)
 ###### test job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration
 We test with previously identified variable
 ```{r echo = FALSE}
@@ -852,7 +873,7 @@ rf5 = functionerror(train_rf_bal_5,train_balanced,test_set)
 ```
 pday increases AUC
 
-###### loop to improve AUC of rf by optimization of the factor
+##### Model 4 optimized rf -  loop to improve AUC of rf by optimization of the factor
 In order to improve the tuning of the rf, we use the following code, which is not run as part of this report in order to save time because it has already been run separately
 ```{r, eval=FALSE, include=TRUE}
 control <- trainControl(method='repeatedcv',
@@ -940,3 +961,7 @@ rf_best_holdout = functionerror(model_best_rf,train_balanced,final_holdout_set, 
 #AUC = 0.7804808 
 ```
 the result on the final holdout is an AUC of 0.7804808.
+
+## Part 4 - conclusion
+
+The best prediction are offered by random forest after optimization of the parameters. Then, the best AUC from knn was 0.7958 on the test. For glm it reached 0.789.
