@@ -11,9 +11,9 @@ output:
 # Own Project Bank Score
 
 ## Part 1 - Introduction
-In this project, we create a loan recommendation system leveraging on a dataset where we predict the y event.
-We will apply a machine learning algorithm to the training set of the bank_score data set and test it on a final hold-out set. The final hold-out test will not be used for training or selection of the algorithm, it will only be used at the end of the project on the final model. Instead, the 90% of data available for training from bank_score, called bank_score_set, should be split further into train and test.
-The criteria to assess the success of the algorithm is the Area Under the Curve (AUC) and the true positive on the test set. AUC measures how the model performs in distinguising the true and false positive.
+In this project, we create a classification system leveraging on a dataset where we predict the event {y=0} and {y=1}.
+We will apply a machine learning algorithm to the training set of the data set named "bank_score" and test it on a final hold-out set, made of 10% of available data. The final hold-out test will not be used for training or selection of the algorithm, it will only be used at the end of the project on the final model. Instead, the 90% of data available for training from bank_score, called bank_score_set, should be split further into train and test.
+The criteria to assess the success of the algorithm is the Area Under the Curve (AUC) and the percentage of true positive on the test set. AUC measures how the model performs in distinguising the true and false positive.
 In order to proceed, we will:
 
 * Prepare the work environment:
@@ -26,10 +26,11 @@ In order to proceed, we will:
 *	Analyse the data set.
 
 * Calculate the AUC for four models.
-    + glm on several variables
-    + knn on several variables
-    + rf on several variables
-    + rf on selected variables with loop to optimize parameters.
+    + glm  (logistic regression) on several variables
+    + knn  (k-nearest neightboors classification model)     on several variables
+    + rf (random forest) on several variables
+    + best rf model with 3 selected hyperparameters from a cross-validation and a grid search.
+
     
 * Calculation of AUC on the final model.
 
@@ -37,7 +38,7 @@ In order to proceed, we will:
 ## Part 2 – Methods/analysis
 
 ### Data preparation
-The files have been downloaded on the computer and saved under "C:/Users/vladi/OneDrive/Documents/R/Own-project" 
+The files have been downloaded  (from kaggle, url=https://www.kaggle.com/datasets/kapturovalexander/bank-credit-scoring) on the computer and saved under "C:/Users/vladi/OneDrive/Documents/R/Own-project" 
 
 ```{r setup, include=FALSE}
 # load the dataset
@@ -63,7 +64,7 @@ head(bank_score)
 ```
 
 ### 2.1 Data vizualisation
-The completeness of the data set will be assessed here, to estimate the need for data cleaning. Then, each variable will be visually viewed to assess opportunities of adjustements and if we should keep them or not in the final model.
+The completeness of the data set will be assessed here, to estimate the need for data cleaning. Then, each variable will be viewed to assess opportunities of adjustments and if we should keep them or not in the final model.
 We start with analyzing the structure of the data.
 
 #### Structure of the Data
@@ -79,9 +80,9 @@ summary(bank_score)
 We can now see the format of each variable, and what its content looks like.
 We also get the overview of the minimum and maximum value for each variable and a first understanding of which variable might need an adjustment.
 
-We also see that there is no empty cell in the dataset when we look at the n/a in each column
+We also see that there is no empty cell in the dataset when we look at the n/a in each column.
 
-```{r echo = FALSE}
+```{r eval=FALSE, echo = FALSE}
 sum(is.na(bank_score$age))
 sum(is.na(bank_score$job))
 sum(is.na(bank_score$marital))
@@ -103,12 +104,11 @@ sum(is.na(bank_score$y))
 
 ```
 
-We will also look at the unique value per variable
+We will also look at the number of unique value per variable.
 
 ```{r echo = FALSE}
 
 #Let us check how many unique value per variable
-
 for (j in 1:ncol(bank_score)) {
   #cat(names(bank_score)[j], "\t", length(unique(bank_score[,j])),"\n")
   cat(format(names(bank_score)[j],
@@ -117,7 +117,7 @@ for (j in 1:ncol(bank_score)) {
   }
 ```
 
-We can see that job, marital, education, default, housing, loan, contact, month, poutcome and y are categorical while age, balance, day, duration, campaign, pdays, previous are more continous.
+We can see that job, marital, education, default, housing, loan, contact, month, poutcome and y are categorical while age, balance, day, duration, campaign, pdays, previous are more continuous.
 
 #### Variable vizualisation - categorical
 We first establish a function which we will use to create a graph on each categorical variable.
@@ -196,7 +196,7 @@ g1g2 = twograph("job","Job")
 #Visual difference between yes and no: variable to keep
 ```
 
-We can see strong difference in the distribution of yes and no for each position, we will definitely keep those variables in the algorithm.
+We can see strong difference in the distribution of yes and no for each position, we will definitely keep this variable in the algorithm.
 
 ##### marital
 ```{r echo = FALSE}
@@ -205,7 +205,7 @@ g1g2 = twograph("marital","Marital")
 #Visual difference between yes and no: variable to keep
 ```
 
-We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
+We can see strong difference in the distribution of yes and no, we will definitely keep this variable in the algorithm.
 
 ##### education
 ```{r echo = FALSE}
@@ -214,7 +214,7 @@ g1g2 = twograph("education","Education")
 #Visual difference between yes and no: variable to keep
 ```
 
-We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
+We can see strong difference in the distribution of yes and no, we will definitely keep this variable in the algorithm.
 
 
 ##### default
@@ -224,7 +224,7 @@ g1g2 = twograph("default","Default")
 #the variable does not seem to have an impact, it will be tested further
 ```
 
-The trend is not clear visually, we will need to test the variable further
+The trend is not clear visually, we will need to check the variable further
 
 ##### housing
 ```{r echo = FALSE}
@@ -233,7 +233,7 @@ g1g2 = twograph("housing","Housing")
 #Visual difference between yes and no: variable to keep
 ```
 
-We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
+We can see strong difference in the distribution of yes and no, we will definitely keep this variable in the algorithm.
 
 ##### loan
 ```{r echo = FALSE}
@@ -242,7 +242,7 @@ g1g2 = twograph("loan","Loan")
 #Visual difference between yes and no: variable to keep
 ```
 
-We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
+We can see strong difference in the distribution of yes and no, we will definitely keep this variable in the algorithm.
 
 ##### month
 ```{r echo = FALSE}
@@ -254,7 +254,7 @@ g1g2 = twograph("month","Month",
 #Visual difference between yes and no: variable to keep
 ```
 
-We can see strong difference in the distribution of yes and no, we will definitely keep those variables in the algorithm.
+We can see strong difference in the distribution of yes and no, we will definitely keep this variable in the algorithm.
 
 ##### poutcome
 ```{r echo = FALSE}
@@ -263,7 +263,7 @@ g1g2 = twograph("poutcome","Poutcome")
 #Visual difference between yes and no, however, interpretation is uncertain: variable to test
 ```
 
-We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
+We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further check will be required.
 
 ##### day
 ```{r echo = FALSE}
@@ -273,7 +273,7 @@ g1g2 = twograph("day","Day",
 #Visual difference between yes and no, however, interpretation can be difficult because of granular data: variable to test
 ```
 
-We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
+We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further check will be required.
 
 ##### age
 ```{r echo = FALSE}
@@ -285,7 +285,7 @@ g1g2 = twograph("age","Age",
 #Visual difference between yes and no, however, interpretation can be difficult because of granular data: variable to test
 ```
 
-We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
+We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further check will be required.
 
 ##### campaign
 ```{r echo = FALSE}
@@ -297,7 +297,7 @@ g1g2 = twograph("campaign","Campaign",
 #Visual difference between yes and no, however, interpretation uncertain because of granular data: variable to test
 ```
 
-We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
+We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further check will be required.
 
 ##### previous
 ```{r echo = FALSE}
@@ -310,13 +310,13 @@ g1g2 = twograph("previous","Previous",
 
 ```
 
-We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further test will be required.
+We can see difference in the distribution of yes and no, however, interpretation is not fully clear and further check will be required.
 
 
 #### Variable vizualisation - continuous
 
 ##### Function
-We elaborate a function for easier production of the graphs on continuous variable
+We elaborate a function for easier production of the graphs on continuous variable.
 ```{r}
 ########## continuous variables : boxplot ###
 
@@ -351,13 +351,16 @@ plot(p)
 ##We see we could consider excluding amounts beyond ZMW 10,000
 ```
 
-We should consider removing outliers
+
+We should consider removing outliers.
 
 ```{r echo = FALSE}
 p <- onegraph_boxp("balance","Balance",bank_score[bank_score$balance<=10000,])
 plot(p)
 #seems to be a difference: variable to test taking about outliers above 20,000
 ```
+
+
 This variable should be tested further in the algorithms.
 
 ##### Age
@@ -367,6 +370,7 @@ p <- onegraph_boxp("age","Age",bank_score)
 plot(p)
 # seems to be a slight difference, variable to test
 ```
+
 
 This variable should be tested further in the algorithms without outliers.
 
@@ -378,7 +382,8 @@ plot(p)
 #We can remove outliers beyond 1000
 ```
 
-We should consider removing outliers beyond 1,000
+
+We should consider removing outliers beyond 1,000.
 ```{r echo = FALSE}
 
 p <- onegraph_boxp("duration","Duration", bank_score[bank_score$duration<=1000,])
@@ -386,7 +391,8 @@ plot(p)
 # to be tested without outliers
 ```
 
-To be tested in the algorithms without outliers
+
+To be tested in the algorithms without outliers.
 
 ##### pdays
 ```{r echo = FALSE}
@@ -396,14 +402,16 @@ plot(p)
 #We can remove outliers beyond 250
 ```
 
-We test removing outliers beyond 250
+
+We test removing outliers beyond 250.
 ```{r echo = FALSE}
 p <- onegraph_boxp("pdays","Pdays", bank_score[bank_score$pdays<=250,])
 plot(p)
 #to be tested without outliers
 ```
 
-To be tested further in the algorithms without outliers
+
+To be tested further in the algorithms without outliers.
 
 ##### previous
 ```{r echo = FALSE}
@@ -413,12 +421,13 @@ plot(p)
 #Remove outliers above 10
 ```
 
-We test removing outliers beyond 250
+We test removing outliers beyond 250.
 ```{r echo = FALSE}
 
 p <- onegraph_boxp("previous","Previous", bank_score[bank_score$previous<=10,])
 plot(p)
 ```
+
 Variable to be tested further in the algorithms without outliers beyond 10.
 
 ### 2.2 – Preparing the sample
@@ -492,12 +501,17 @@ nrow(train_set)+nrow(test_set)-nrow(dataset)
 ```
 
 #### Build a balanced sample
-Given that the proportion of yes is very low, building a model which correctly predict them will require oversampling.
+Given that the proportion of yes is very small, building a model which correctly predict them will require   oversampling or undersampling for constructing a balanced dataset and avoid bias training towards the larger
+class. For this data, undersampling has performed better than oversampling. We use the function “ovun.sample” from the package ROSE which gave the best result in comparison with a first direct implementation.
 
+The number of "yes" and "no" in the train set are:
 ```{r echo = FALSE}
 #Build a balanced sample instead
 sum(train_set$y == "yes")
 sum(train_set$y == "no")
+```
+The number of "yes" and "no" in the balanced set are:
+```{r echo = FALSE}
 
 set.seed(num_seed)
 bank_score_set_over <- ovun.sample(y~., data = train_set,
@@ -509,8 +523,8 @@ train_balanced = bank_score_set_over
 
 ### 2.3 – Training and testing the models
 #### Removing the outliers from the dataset
-We remove, on the train set and the balance set, all values of previous above 10, value of balance above 10,000, value of duration above 1,000, values of pdays above 250.
-The number of rows in train_set and train_balanced is thus now:
+We remove, on the train set and the balance set, all values of the variable "previous" above 10, value of "balance" above 10,000, value of "duration" above 1,000, values of "pdays" above 250.
+The number of rows in train_set and train_balanced (469*2) is thus now:
 ```{r echo = FALSE}
 #We will for sure keep the variables job -  education -  marital - housing-  loan – month  
 #and test the variables default day – poutcome – age - campaign- previous (removing outliers beyond 10) -  balance (taking out outliers beyond 10,000), duration (taking out outliers beyond 1,000), pdays(without outliers beyond 250
@@ -529,10 +543,10 @@ train_balanced <- train_balanced[train_balanced$duration<=1000,]
 train_balanced <- train_balanced[train_balanced$pdays<=250,]
 ```
 
-#### Function for automaticall training and testing the algorithms
-In order to make training and testing of different algorithms easier, the following formula has been implemented to train and test.
+#### Function for automatically training and testing the algorithms
+In order to make training and testing of different algorithms easier, the following formula has been implemented to  train the model and to test.
 ```{r}
-#Function to automatically identify accuracy, error and AUC
+#Function to automatically compute accuracy, error and AUC
 functionerror <- function(train_glm,train_set,test_set, ifcat=TRUE) {
   glm_pred_train <- predict(train_glm, train_set)
   glm_pred_test  <- predict(train_glm, test_set)
@@ -568,7 +582,7 @@ functionerror <- function(train_glm,train_set,test_set, ifcat=TRUE) {
 #### Model 1 - GLM model
 
 ##### variable job -  education -  marital - housing-  loan – month
-We start with the variables which were the most promising from the graphs
+We start with the variables which were the most promising from the graphs.
 
 ```{r echo = FALSE}
  #only with variable job -  education -  marital - housing-  loan – month
@@ -578,7 +592,7 @@ train_glm <- train(y ~ job + education + marital + housing + loan + month, metho
 glm1 = functionerror(train_glm,train_set,test_set) 
 # AUC 0.5134, Accuracy 0.8768 - however, yes yes only 2/46 identified
 ```
-We will try with the balanced set to assess if the prediction of true positive can be improved.
+The model focuses on {y=0} because the imbalance.We will try with the balanced set to assess if the prediction of true positive can be improved.
 ```{r echo = FALSE}
 #Test with balanced set
 train_glm_balanced <- train(y ~ job + education + marital + housing + loan + month,
@@ -589,10 +603,10 @@ glm1_bal = functionerror(train_glm_balanced,train_balanced,test_set)
 # AUC 0.604 Accuracy 0.6847 - good yes 23/26 - lower accuracy but better prediction of yes 
 # we will work only on the balanced_sample
 ```
-Prediction is improved, we will thus focus on the balanced sample.
+Prediction for {y=1} is improved, we will thus focus on the balanced sample.
 
 ##### test day
-We assess if adding day improves the prediction
+We assess if adding the variable "day" improves the prediction.
 ```{r echo = FALSE}
 
 #test day
@@ -606,10 +620,10 @@ train_glm_balanced <- train(y ~ job + education + marital + housing + loan + mon
 glm2_bal = functionerror(train_glm_balanced,train_set,test_set) 
 # AUC decreased, day is not to be kept, we can try it with other method though
 ```
-AUC decreases, we will not keep day.
+AUC decreases, we will not keep "day".
 
 ##### test poutcome
-We assess if adding poutcome improves the prediction
+We assess if adding "poutcome" improves the prediction.
 
 ```{r echo = FALSE}
 #test poutcome
@@ -623,10 +637,10 @@ train_glm_balanced <- train(y ~ job + education + marital + housing + loan + mon
 glm3_bal = functionerror(train_glm_balanced,train_set,test_set) 
 #AUC increased 0.6402778: kept
 ```
-AUC improves, we keep poutcome as a variable
+AUC improves, we keep "poutcome" as a variable.
 
 ##### test age
-We assess if adding age improves the prediction
+We assess if adding "age" improves the prediction.
 ```{r echo = FALSE}
 #test age
 #train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age, method="glm", data = train_set)
@@ -639,10 +653,10 @@ train_glm_balanced <- train(y ~ job + education + marital + housing + loan + mon
 glm4_bal = functionerror(train_glm_balanced,train_set,test_set) 
 #AUC increases 0.6469807, and yes yes prediction increases
 ```
-AUC improves, we keep age as a variable
+AUC improves, we keep "age" as a variable.
 
 ##### test campaign
-We assess if adding campaign improves the prediction
+We assess if adding "campaign" improves the prediction.
 ```{r echo = FALSE}
 #train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign, method="glm", data = train_set)
 #glm5 = functionerror(train_glm,train_set,test_set) 
@@ -654,10 +668,10 @@ train_glm_balanced <- train(y ~ job + education + marital + housing + loan + mon
 glm5_bal = functionerror(train_glm_balanced,train_set,test_set) 
 #AUC and yes/yes prediction decreases 0.6397947 , campaign not kept 
 ```
-AUC decreases, campaign not kept as a variable
+AUC decreases, "campaign" not kept as a variable.
 
 ##### test previous
-We assess if adding previous improves the prediction
+We assess if adding previous improves the prediction.
 ```{r echo = FALSE}
 #test previous
 #train_glm <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ age + previous, method="glm", data = train_set)
@@ -670,10 +684,10 @@ train_glm_balanced <- train(y ~ job + education + marital + housing + loan + mon
 glm6_bal = functionerror(train_glm_balanced,train_set,test_set) 
 #Accuracy increased at 0.6603 and yes/yes prediction increased  at 26/46, will  keep previous
 ```
-Accuracy increases, we keep previous as a variable
+Accuracy increases, we keep the variable "previous".
 
 ##### test default
-We assess if adding default improves the prediction
+We assess if adding the variable "default" improves the prediction.
 
 ```{r echo = FALSE}
 #train_glm <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ default, method="glm", data = train_set)
@@ -686,10 +700,10 @@ train_glm_balanced <- train(y ~ job + education + marital + housing + loan + mon
 glm7_bal = functionerror(train_glm_balanced,train_set,test_set) 
 #AUC increased to 0.6617754 
 ```
-Default increases AUC, we will keep this variable
+The variable "default" increases AUC, we will keep this variable.
 
 ##### test balance
-We assess if adding balance improves the prediction
+We assess if adding balance improves the prediction.
 
 ```{r echo = FALSE}
 
@@ -706,10 +720,10 @@ glm8_bal = functionerror(train_glm_balanced,train_set,test_set)
 #AUC decreases  and yes/yes prediction decreases 
 #balance not kept
 ```
-Balance does not increase AUC, balance not kept.
+The variable "balance" does not increase AUC, balance not kept.
 
 ##### test duration
-We assess if adding duration improves the prediction
+We assess if adding the variable "duration" improves the prediction.
 
 ```{r echo = FALSE}
 #test duration
@@ -724,10 +738,10 @@ glm9_bal = functionerror(train_glm_balanced,train_set,test_set)
 print(summary(train_glm_balanced$finalModel))
 #AUC increases 0.8308575   and yes/yes prediction increases 39/46
 ```
-Duration improves AUC, duration is kept as a variable.
+The variable "duration" improves AUC, duration is kept as a variable. This model will be kept as the best glm, hence the regression coefficients beta are shown.Data have been normalized. The coefficient "month dec" seens to be inconsistent due to the characteristics of this specific sample.
 
 ##### test pday
-We assess if adding pday improves the prediction
+We assess if adding the variable "pday" improves the prediction.
 
 ```{r echo = FALSE}
 #glm_pred <- predict(train_glm, train_set)
@@ -742,17 +756,17 @@ train_glm_balanced <- train(y ~ job + education + marital + housing + loan + mon
 glm10_bal = functionerror(train_glm_balanced,train_set,test_set) 
 #decreases
 ```
-pday decreases AUC and is not kept.
+The variable "pday" decreases AUC and is not kept.
 
 ##### GLM conclusion
 
-The best set of variable has been identified as job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration
+The best set of variable has been identified as job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration.
 
 #### Model 2 - knn model
 We will also proceed with testing knn on the variable visually identified and test additional variable.
 
 ##### test job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration
-We try with the variable identified as most performant with glm
+We try with the variable identified as best performing with glm
 ```{r echo = FALSE}
 #Perform knn method without any adjustement
 #given the previous results, we will perform straight with the balanced_sample
@@ -761,26 +775,26 @@ knn1_bal = functionerror(train_knn1_bal,train_set,test_set)
 #accuracy 0.7471014 and YES/YES 35/46
 ```
 ##### test day
-Does day help improve the AUC with knn
+Does the variable "day" helps improving the AUC with knn.
 ```{r echo = FALSE}
 #Check all variable do not do better than pre selection of variables
 train_knn2_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day, method="knn", data = train_balanced)
 knn2_bal = functionerror(train_knn2_bal,train_set,test_set)
 #day decreases AUC
 ```
-Day decreases AUC
+The variable "day" decreases AUC.
 
 ##### test campaign
-Does campaign help improve the AUC with knn?
+Does "campaign" help improve the AUC with knn?
 ```{r echo = FALSE}
 train_knn3_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+campaign, method="knn", data = train_balanced)
 knn3_bal = functionerror(train_knn3_bal,train_set,test_set)
 #AUC also decreases 
 ```
-campaign decreases AUC
+The variable "campaign" decreases AUC.
   
 ##### test balance
-Does balance help improve the AUC with knn?
+Does "balance" help improve the AUC with knn?
 ```{r echo = FALSE}
 train_knn4_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+balance, method="knn", data = train_balanced)
 knn4_bal = functionerror(train_knn4_bal,train_set,test_set)
@@ -789,25 +803,22 @@ knn4_bal = functionerror(train_knn4_bal,train_set,test_set)
 balance decreases AUC
 
 ##### test pday
-Does pday improve the AUC with knn?
+Does "pday" improve the AUC with knn?
 ```{r echo = FALSE}
 train_knn5_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+pdays, method="knn", data = train_balanced)
 knn5_bal = functionerror(train_knn5_bal,train_set,test_set)
 #with knn, pdays really increases AUC to 0.7788
 ```
-pday improves AUC
+"pday" improves AUC
 
 ##### optimization of parameter with cross validation
-Wth the best set of variable identified for knn (job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+pdays), we now optimize tunegrid and perform cross validation
+With the best set of variable identified for knn (job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+pdays), we now optimize for the number of neighboors with a grid search and perform a more elaborate cross-validation procedure (average from 5 cv and 15 folds for each cv among the 5).
 
 ```{r}
 train_knn_cv_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+pdays,
                            method="knn",
                            data = train_balanced,
-                           #tuneGrid = data.frame(k=seq(15,50,2)),
                            tuneGrid = data.frame(k=seq(5,50,2)),
-                           #trControl = trainControl(method="cv", 
-                           #                           number = 15),
                            trControl = trainControl(method="repeatedcv", 
                                                     number = 15,
                                                     repeats = 5),
@@ -829,25 +840,29 @@ knn_bal_CV = functionerror(train_knn_cv_bal,train_set,test_set)
 ```
 
 ######  conclusion knn
-Optimizing variables and parameters helped improve the prediction, however predictive power remains not as good as glm.
+Optimizing variables and parameters helped improve the prediction, however predictive power is only slightly better than glm which reached AUC of 0.7896.
 
 #####  Model 3- random forest (rf)
 ###### test job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration
-We test with previously identified variable
+We test with previously identified variable.
+
 ```{r echo = FALSE}
 set.seed(num_seed)
 train_rf_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration, method="rf", data = train_balanced)
 rf1 = functionerror(train_rf_bal,train_balanced,test_set) 
 # rf1 with balanced data set has an AUC of 0.8155797  and predicts 39/46 yes/yes
 ```
+
 rf is promising
+
 ###### test day
 ```{r echo = FALSE}
 train_rf_bal_2 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day, method="rf", data = train_balanced)
 rf2 = functionerror(train_rf_bal_2,train_balanced,test_set) 
 #AUC 0.8428744 , y/y 4. With rf, day improves AUC
 ```
-day improves AUC with rf
+
+The variable "day" improves AUC with rf.
 
 ###### test campaign
 ```{r echo = FALSE}
@@ -855,7 +870,7 @@ train_rf_bal_3 <- train(y ~ job + education + marital + housing + loan + month+ 
 rf3 = functionerror(train_rf_bal_3,train_balanced,test_set) 
 # AUC 0.8320048  , campaign decreases AUC
 ```
-campaign decreases AUC
+"campaign" decreases AUC.
 
 ###### test balance
 ```{r echo = FALSE}
@@ -863,7 +878,7 @@ train_rf_bal_4 <- train(y ~ job + education + marital + housing + loan + month+ 
 rf4 = functionerror(train_rf_bal_4,train_balanced,test_set)
 # AUC 0.8169686 , balance decreases AUC
 ```
-balance decreases AUC
+The variable "balance" decreases AUC.
 
 ###### test pday
 ```{r echo = FALSE}
@@ -871,10 +886,10 @@ train_rf_bal_5 <- train(y ~ job + education + marital + housing + loan + month+ 
 rf5 = functionerror(train_rf_bal_5,train_balanced,test_set)
 #AUC 0.8456522, y/y 41, pdays increases AUC
 ```
-pday increases AUC
+The variable "pday" increases AUC
 
 ##### Model 4 optimized rf -  loop to improve AUC of rf by optimization of the factor
-In order to improve the tuning of the rf, we use the following code, which is not run as part of this report in order to save time because it has already been run separately
+In order to improve the tuning of the rf, we use the following code to cross validate with the rf and tune three hyperparameters. This  is not run as part of this report in order to save time because it has already been run separately.
 ```{r, eval=FALSE, include=TRUE}
 control <- trainControl(method='repeatedcv',
                         number=10,
@@ -884,19 +899,14 @@ metric <- "Accuracy"
 set.seed(num_seed)
 
 nodesize.val.all  = c(1:5) 
-mtry.val.all      = c(1:7) #1:7
-num.trees.val.all = c(50,100,150,200,250)#c(50,100,150,200,250)
+mtry.val.all      = c(1:7) 
+num.trees.val.all = c(50,100,150,200,250)
 nb.models         = length(mtry.val.all)*
   length(num.trees.val.all)*
   length(nodesize.val.all)
 
 AUC.all = matrix(0,nrow = nb.models, ncol=4)
 colnames(AUC.all) <- c("mtry","num.trees","nodesize","auc")
-
-#list_vars = c("job" + "education" + "marital" + "housing" + "loan" + "month"+ "poutcome"+ "age"+ "previous" + "default" + "duration" + "day"+ "pdays")
-#job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day+ pdays
-#variables   <- paste(list_vars, collapse=" + ")
-#formula.cl <- as.formula(paste("y", " ~ ", variables,sep = ""))
 
 model_all= list()
 
@@ -937,8 +947,10 @@ for (nodesize.val in nodesize.val.all) {
     }
   }
 }
+#close
+sink()
 ```
-From the output file, We see that the best parameter is the 117
+From the output file, We see that the best parameter is the 117 run.
 
 
 
@@ -947,12 +959,15 @@ From the output file, We see that the best parameter is the 117
 ### result of best rf tuning
 #### from the file analysis, the best model is 117
 ```{r, eval=FALSE, include=TRUE}
+
+#from the file analysis, the best model is 117
 model_best_rf <- model_all[[117]]
 model_best_rf
 rf_best = functionerror(model_best_rf,train_balanced,test_set, ifcat = TRUE)
 # AUC = 0.8579106  
 ```
-The result on the test set is an AUC of 0.8579106
+The result on the test set is an AUC of 0.8579.
+
 ### result on final holdout
 
 ```{r, eval=FALSE, include=TRUE}
@@ -960,8 +975,18 @@ The result on the test set is an AUC of 0.8579106
 rf_best_holdout = functionerror(model_best_rf,train_balanced,final_holdout_set, ifcat = TRUE)
 #AUC = 0.7804808 
 ```
-the result on the final holdout is an AUC of 0.7804808.
+the result on the final holdout is an AUC of 0.7804.
 
 ## Part 4 - conclusion
 
-The best prediction are offered by random forest after optimization of the parameters. Then, the best AUC from knn was 0.7958 on the test. For glm it reached 0.789.
+The best prediction are is offered by the random forest after optimization of three hyperparameters from cross-validation. Then, the best AUC from knn was 0.7958 on the test. For glm it reached 0.7896. Hence, this is the tuned random forest which is used with the final dataset for validation, with finally an AUC equal to 0.7804.
+
+The (small) difference of AUC between training and validation may come from the size of the training dataset from undersampling, due to imbalanced original dataset.The model might also be slightly overfit. Another reason may be that the chosen hyperparameters and set of kept variables may be only near the optimal choice. Another limit is the spliting which is unique, hence an averaging may be better but time consuming. 
+A better model may be also possible by more recoding the variables, more tuning the outliers removal or changing to a neural network with deep learning available in r language.
+
+## Part 5 - reference
+The dataset comes from Kaggle https://www.kaggle.com/datasets/kapturovalexander/bank-credit-scoring
+
+Under sampling was made thanks to the ovun.sample function from the ROSE library.
+
+The AUC was calculated thanks to the pROC library.

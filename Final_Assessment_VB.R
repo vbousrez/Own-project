@@ -26,12 +26,6 @@ head(bank_score)
 str(bank_score)
 summary(bank_score)
 
-#Empty columns: do we have any column with empty cell?
-#Empty <- for (j in 1:ncol(bank_score)) {
-#  sum(is.na(bank_score)[j])
-#}
-#Empty
-#No cell empty
 
 #verification line by line
 sum(is.na(bank_score$age))
@@ -336,13 +330,14 @@ train_set <- train_set[train_set$previous<=10,]
 train_set <- train_set[train_set$balance<=10000,]
 train_set <- train_set[train_set$duration<=1000,]
 train_set <- train_set[train_set$pdays<=250,]
-nrow(train_set)
 
 nrow(train_balanced)
 train_balanced <- train_balanced[train_balanced$previous<=10,]
 train_balanced <- train_balanced[train_balanced$balance<=10000,]
 train_balanced <- train_balanced[train_balanced$duration<=1000,]
 train_balanced <- train_balanced[train_balanced$pdays<=250,]
+
+nrow(train_set)
 nrow(train_balanced)
 
 #Function to automatically identify accuracy, error and AUC
@@ -526,33 +521,20 @@ knn2_bal = functionerror(train_knn2_bal,train_set,test_set)
 #day decreases AUC
 train_knn3_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+campaign, method="knn", data = train_balanced)
 knn3_bal = functionerror(train_knn3_bal,train_set,test_set)
-#AUC also decreases accuracy
+#AUC also decreases AUC
 train_knn4_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+balance, method="knn", data = train_balanced)
 knn4_bal = functionerror(train_knn4_bal,train_set,test_set)
-#balance decreases accuracy
+#balance decreases AUC
 train_knn5_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+pdays, method="knn", data = train_balanced)
 knn5_bal = functionerror(train_knn5_bal,train_set,test_set)
 #with knn, pdays really increases AUC to 0.7788
-
-
-#Perform knn method with cross validation and identification of best k on balanced sample
-#identification of best tune
-# train_knn2_cv_bal <- train(y ~ job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration,
-#                            method="knn",
-#                            data = train_balanced,
-#                            tuneGrid = data.frame(k=seq(5,50,2)),
-#                            trControl = trainControl(method="repeatedcv", number = 15, repeat = 5))
-#                           #trControl = trainControl(method="cv", number = 10, p =0.9))
 
 
 #job + education + marital + housing + loan + month+ day+ poutcome+ campaign+ previous + duration 0.7633 31/46
 train_knn_cv_bal <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration+pdays,
                            method="knn",
                            data = train_balanced,
-                           #tuneGrid = data.frame(k=seq(15,50,2)),
                            tuneGrid = data.frame(k=seq(5,50,2)),
-                           #trControl = trainControl(method="cv", 
-                           #                           number = 15),
                            trControl = trainControl(method="repeatedcv", 
                                                     number = 15,
                                                     repeats = 5),
@@ -591,7 +573,7 @@ rf4 = functionerror(train_rf_bal_4,train_balanced,test_set)
 
 train_rf_bal_5 <- train(y ~ job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day+ pdays, method="rf", data = train_balanced)
 rf5 = functionerror(train_rf_bal_5,train_balanced,test_set)
-#AUC 0.8456522, y/y 41, pdays increases accuracy
+#AUC 0.8456522, y/y 41, pdays increases AUC
 
 # use cross validation to choose parameter
 # Define a range of values for ntree to tune over
@@ -602,11 +584,6 @@ rf5 = functionerror(train_rf_bal_5,train_balanced,test_set)
 # cv_folds
 
 ######### BETTER TUNING RF #########
-
-#### https://stats.stackexchange.com/questions/348245/do-we-have-to-tune-the-number-of-trees-in-a-random-forest
-#### https://rpubs.com/phamdinhkhanh/389752
-#### https://machinelearningmastery.com/tune-machine-learning-algorithms-in-r/
-#### https://www.jmlr.org/papers/volume18/17-269/17-269.pdf
 
 #10 folds repeat 3 times
 control <- trainControl(method='repeatedcv',
@@ -626,10 +603,6 @@ nb.models         = length(mtry.val.all)*
 AUC.all = matrix(0,nrow = nb.models, ncol=4)
 colnames(AUC.all) <- c("mtry","num.trees","nodesize","auc")
 
-#list_vars = c("job" + "education" + "marital" + "housing" + "loan" + "month"+ "poutcome"+ "age"+ "previous" + "default" + "duration" + "day"+ "pdays")
-#job + education + marital + housing + loan + month+ poutcome+ age+ previous + default + duration + day+ pdays
-#variables   <- paste(list_vars, collapse=" + ")
-#formula.cl <- as.formula(paste("y", " ~ ", variables,sep = ""))
 
 model_all= list()
 
@@ -676,61 +649,9 @@ sink()
 #from the file analysis, the best model is 117
 model_best_rf <- model_all[[117]]
 model_best_rf
-# for (nodesize.val in nodesize.val.all) {
-#   for (mtry.val in mtry.val.all) {
-#     for (num.trees.val in num.trees.val.all) {
-#       m = m+1
-#       cat("running random forest with mlty =",mtry.val,
-#           "  num.trees=",num.trees.val,"nodesize.val =", nodesize.val,"\n")
-#       tune.grid <- expand.grid(mtry=c(mtry.val))
-#       train_rf_try <- train(y~.,
-#                             data=train_balanced,
-#                             method='rf',
-#                             metric='Accuracy',
-#                             tunegrid=tune.grid,
-#                             #num.trees = num.trees.val,
-#                             ntree = num.trees.val,
-#                             nodesize = nodesize.val,
-#                             trControl=control)
-#       rf_try = functionerror(train_rf_try,train_balanced,test_set,
-#                              ifcat = TRUE)
-#       roc.out <- roc( as.integer(test_set$y=="yes"),
-#                       as.integer(as.character(rf_try$glm_pred_test)=="yes"))
-#       auc.out = auc(roc.out)
-#       cat("mlty =",mtry.val,"  num.trees =",num.trees.val,
-#           "nodesize.val =", nodesize.val,
-#           "  ", "AUC =",as.numeric(auc.out),"\n")
-#       #cat("--------------------n")
-#       cat("\n")
-#       
-#       AUC.all[m,] = c(mtry.val,num.trees.val,nodesize.val,as.numeric(auc.out))
-#       
-#     }
-#   }
-# }
-
-####Final holdout
-#running random forest with mlty = 5   num.trees= 250 nodesize.val = 1 
-set.seed(num_seed)
-# #train_rf_best <- train(y~.,
-#                       data=train_balanced[,c(list_vars,"y")],
-#                       method='rf',
-#                       metric='Accuracy',
-#                       mlty= 5,
-#                       ntree = 250,
-#                       nodesize = 1,
-#                       trControl=control)
 rf_best = functionerror(model_best_rf,train_balanced,test_set, ifcat = TRUE)
 # AUC = 0.8579106  
 
 #what is the score on the holdout
 rf_best_holdout = functionerror(model_best_rf,train_balanced,final_holdout_set, ifcat = TRUE)
 #AUC = 0.7804808  
-
-
-# inserer un peu de code: function d'erreur, boucle, les graphs, les AUC (pas pour la boucle) 
-#pdf graphs http://www.sthda.com/english/wiki/creating-and-saving-graphs-r-base-graphs
-#```{r 'setup', echo = FALSE, cache = TRUE}
-#https://bookdown.org/yihui/rmarkdown/
-#https://rmarkdown.rstudio.com/lesson-3.html check option for captions 
-#garder les betas
